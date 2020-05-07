@@ -16,7 +16,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with Crash The Stack.  If not, see <https://www.gnu.org/licenses/>.
 
-(define-library (deft main)
+(define-library (crash main)
   (import (gambit)
           (crash game)
           (substratic sdl2)
