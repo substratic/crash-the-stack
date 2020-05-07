@@ -1,0 +1,8 @@
+.DS_Store
+dist/*.dll
+dist/crash-the-stack
+dist/crash-the-stack.exe
+dist/crash-the-stack.app
+lib/
+gambit/
+*.o*

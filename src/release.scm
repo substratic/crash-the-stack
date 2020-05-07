@@ -1,0 +1,31 @@
+;; Copyright (c) 2020 by David Wilson, All Rights Reserved.
+;;
+;; This file is part of Crash The Stack.
+;; https://github.com/substratic/crash-the-stack
+;;
+;; Crash The Stack is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+;;
+;; Crash The Stack is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with Crash The Stack.  If not, see <https://www.gnu.org/licenses/>.
+
+(import (substratic engine assets)
+        (crash main))
+
+(assets-base-path-set!
+ (path-normalize
+  (if (equal? (cadr (system-type)) 'apple)
+      "../Resources/assets"
+      "./assets")
+  #f
+  (path-directory (car (command-line)))))
+
+;; Start it up!
+(main)
