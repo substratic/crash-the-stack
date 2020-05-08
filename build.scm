@@ -18,7 +18,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with Crash The Stack.  If not, see <https://www.gnu.org/licenses/>.
 
-(import (substratic build))
+(import (github.com/substratic build))
 
 (define crash-the-stack
   (make-project
@@ -32,7 +32,7 @@
             "./dist/crash-the-stack.app/Contents/MacOS"
             "./dist"))
 
-    search-paths: '("src/" "lib/")
+    search-paths: '("src/")
 
     files:
       (lambda (mode target)

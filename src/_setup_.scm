@@ -16,5 +16,5 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with Crash The Stack.  If not, see <https://www.gnu.org/licenses/>.
 
-(define-module-alias (substratic)       (github.com/substratic engine))
-(define-module-alias (substratic sdl2)  (github.com/substratic sdl2))
+(define-module-alias (substratic sdl2)   (github.com/substratic sdl2))
+(define-module-alias (substratic engine) (github.com/substratic engine))
