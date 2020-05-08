@@ -18,8 +18,8 @@
 
 (define-library (crash game)
   (import (gambit)
+          (crash stack)
           (substratic engine node)
-          (substratic engine alist)
           (substratic engine state)
           (substratic engine assets)
           (substratic engine events)
@@ -39,15 +39,15 @@
     (define (game-renderer renderer game-state transform)
       (let* ((screen-width  (transform-width  transform))
              (screen-height (transform-height transform)))
+        (render-node renderer (state-ref game-state '(game stack)) transform)
         (render-text renderer "Dev Build" *default-font-small*
                      (- screen-width 5) (- screen-height 15)
                      align: 'right)))
 
     (define (game-component)
       (make-component game
-        (viewport-x 0)
-        (viewport-y 0)
         (paused     #f)
+        (stack      (make-stack '()))
         (handlers   (add-method `((quit ,@quit-event-handler)
                                   (game ,@game-handler))))
         (renderers  (add-method `(game ,@game-renderer)))))

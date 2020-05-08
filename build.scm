@@ -42,9 +42,9 @@
 
     modules: '(;; Components
 
-               ;; Entities
-
                ;; Game-specific code
+               "crash/tile"
+               "crash/stack"
                "crash/game"
 
                ;; Program entrypoint
