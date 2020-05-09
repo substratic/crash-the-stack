@@ -21,20 +21,44 @@
           (substratic sdl2)
           (substratic engine node)
           (substratic engine state)
+          (substratic engine assets)
           (substratic engine renderer)
+          (substratic engine transform)
           (substratic engine components))
   (export make-tile
           tile-width
-          tile-height)
+          tile-height
+          load-tile-assets)
   (begin
 
-    (define tile-width 16)
-    (define tile-height 24)
+    (define tile-width 30)
+    (define tile-height 36)
+    (define tile-image #f)
+
+    (define (load-tile-assets)
+      (set! tile-image (load-asset "images/tile.png")))
+
+    (define (tile-pos->screen-rect tile-x tile-y transform)
+      (let ((screen-x (+ (- (* tile-x tile-width)  (/ tile-width 2))
+                         (/ (transform-width transform) 2)
+                         (transform-x transform)))
+            (screen-y (+ (- (* tile-y tile-height) (/ tile-height 2))
+                         (/ (transform-height transform) 2)
+                         (transform-y transform))))
+        (list (exact (truncate screen-x))
+              (exact (truncate screen-y))
+              tile-width tile-height)))
 
     (define (tile-renderer renderer state transform)
       (with-state state ((position pos-x pos-y)
                          (tile symbol color))
-        (render-rect renderer (list pos-x pos-y tile-width tile-height) color)))
+        (let* ((tile-rect (tile-pos->screen-rect pos-x pos-y transform))
+               (tile-x (car  tile-rect))
+               (tile-y (cadr tile-rect)))
+          (render-image renderer
+                        tile-image
+                        tile-x
+                        tile-y))))
 
     (define (tile-component)
       (make-component tile

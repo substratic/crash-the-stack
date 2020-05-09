@@ -19,6 +19,7 @@
 (define-library (crash main)
   (import (gambit)
           (crash game)
+          (crash tile)
           (substratic sdl2)
           (substratic engine loop)
           (substratic engine assets)
@@ -46,8 +47,8 @@
 
       (let* ((window-width 1280)
              (window-height 720)
-             (screen-width 320)  ; Make the logical screen size smaller to scale up
-             (screen-height 180) ; game assets for a retro pixel look
+             (screen-width 640)  ; Make the logical screen size smaller to scale up
+             (screen-height 360) ; game assets for a retro pixel look
              (window (SDL_CreateWindow "Crash the Stack"
                                        SDL_WINDOWPOS_UNDEFINED
                                        SDL_WINDOWPOS_UNDEFINED
@@ -74,16 +75,20 @@
 
         ;; Set the global image loader to use the renderer instance
         (image-loader-set! (lambda (image-path)
-                            (substratic/engine/assets#load-image renderer image-path)))
+                            (github.com/substratic/engine/assets#load-image renderer image-path)))
 
         ;; Preload assets needed everywhere
         (load-default-fonts)
+
+        ;; Load game assets
+        (load-tile-assets)
 
         ;; Start the game loop
         (game-loop renderer (game-mode)
                   screen-width screen-height
                   enable-rpc: connect-emacs
-                  show-fps: #t)
+                  show-fps: #t
+                  clear-color: '(43 4 82))
 
         (SDL_DestroyWindow window)
         (SDL_Quit)))))

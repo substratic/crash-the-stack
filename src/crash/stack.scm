@@ -22,33 +22,81 @@
           (substratic engine node)
           (substratic engine state)
           (substratic engine renderer)
+          (substratic engine transform)
           (substratic engine components))
   (export make-stack)
   (begin
 
+    (define layer-offset-x 2)
+    (define layer-offset-y -3)
+
     (define (stack-renderer renderer state transform)
       (with-state state ((stack layers))
-        (let ((offset-x 0)
-              (offset-y 0))
-          ;; TODO: Use a looping let
-          ;; (let loop ((offset-x 0)
-          ;;            (offset-y 0)
-          ;;            (remaining-layers layers)))
-          (for-each (lambda (layer)
-                      (for-each (lambda (tile)
-                                  ;; TODO: Use transform for offset?
-                                  (render-node renderer tile transform))
-                                layer)
-                      (set! offset-x (+ offset-x (/ 2 tile-width)))
-                      (set! offset-y (+ offset-y (truncate (floor (/ 4 tile-height))))))
-                    layers))))
+        (let loop ((layers layers)
+                   (layer-index 0))
+          (when (pair? layers)
+            (for-each (lambda (tile)
+                        (render-node renderer tile (transform-add transform
+                                                                  `(,(* layer-offset-x  layer-index)
+                                                                    ,(* layer-offset-y layer-index)
+                                                                    0 0))))
+                      (car layers))
+            (loop (cdr layers) (+ layer-index 1))))))
+
+    (define (load-stack stack-data)
+      (map (lambda (layer)
+             (map (lambda (tile)
+                    (make-tile `((position . ((pos-x . ,(car tile))
+                                              (pos-y . ,(cdr tile)))))))
+                  layer))
+           stack-data))
+
+    (define (tile-run start-x pos-y num-tiles)
+      (let next-tile ((tiles '())
+                      (pos-x (+ start-x (- num-tiles 1)))
+                      (count 1))
+        (if (> count num-tiles)
+            tiles
+            (next-tile
+              (append tiles (list (cons pos-x pos-y)))
+              (- pos-x 1)
+              (+ count 1)))))
+
+    ;; This emulates the Easy board from Gnome Mahjongg
+    (define test-stack
+      `((;; Layer 1
+         (7.5 . 0)
+         (6.5 . 0)
+         ,@(tile-run -5.5 -3.5 12)
+         ,@(tile-run -3.5 -2.5 8)
+         ,@(tile-run -4.5 -1.5 10)
+         ,@(tile-run -5.5 -0.5 12)
+         ,@(tile-run -5.5  0.5 12)
+         ,@(tile-run -4.5  1.5 10)
+         ,@(tile-run -3.5  2.5 8)
+         ,@(tile-run -5.5  3.5 12)
+         (-6.5 . 0))
+        ( ;; Layer 2
+         ,@(tile-run -2.5 -2.5 6)
+         ,@(tile-run -2.5 -1.5 6)
+         ,@(tile-run -2.5 -0.5 6)
+         ,@(tile-run -2.5  0.5 6)
+         ,@(tile-run -2.5  1.5 6)
+         ,@(tile-run -2.5  2.5 6))
+        ( ;; Layer 3
+         ,@(tile-run -1.5 -1.5 4)
+         ,@(tile-run -1.5 -0.5 4)
+         ,@(tile-run -1.5  0.5 4)
+         ,@(tile-run -1.5  1.5 4))
+        ( ;; Layer 4
+         ,@(tile-run -0.5 -0.5 2)
+         ,@(tile-run -0.5  0.5 2))
+        (;; Layer 5
+         (0 . 0))))
 
     (define (stack-component)
       (make-component stack
-        (layers    `((;; Layer 1
-                      ,(make-tile '((position . ((pos-x . 100) (pos-y . 100))))))
-                     (;; Layer 2
-                      ,(make-tile '((position . ((pos-x . 100) (pos-y . 100))))))))
+        (layers    (load-stack test-stack))
         (renderers (add-method `(stack ,@stack-renderer)))))
 
     (define (make-stack component-values)

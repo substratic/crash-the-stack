@@ -40,9 +40,7 @@
       (let* ((screen-width  (transform-width  transform))
              (screen-height (transform-height transform)))
         (render-node renderer (state-ref game-state '(game stack)) transform)
-        (render-text renderer "Dev Build" *default-font-small*
-                     (- screen-width 5) (- screen-height 15)
-                     align: 'right)))
+        #!void))
 
     (define (game-component)
       (make-component game
