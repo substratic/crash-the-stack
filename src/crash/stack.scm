@@ -18,38 +18,101 @@
 
 (define-library (crash stack)
   (import (gambit)
+          (_hamt)
           (crash tile)
           (substratic engine node)
           (substratic engine state)
           (substratic engine renderer)
           (substratic engine transform)
           (substratic engine components))
-  (export make-stack)
+  (export make-stack
+          load-stack
+          tile-run
+          adjacent-positions)
   (begin
 
-    (define layer-offset-x 2)
-    (define layer-offset-y -3)
-
     (define (stack-renderer renderer state transform)
-      (with-state state ((stack layers))
-        (let loop ((layers layers)
-                   (layer-index 0))
-          (when (pair? layers)
-            (for-each (lambda (tile)
-                        (render-node renderer tile (transform-add transform
-                                                                  `(,(* layer-offset-x  layer-index)
-                                                                    ,(* layer-offset-y layer-index)
-                                                                    0 0))))
-                      (car layers))
-            (loop (cdr layers) (+ layer-index 1))))))
+      (with-state state ((stack tiles playable occlusion-map))
+        (for-each (lambda (tile)
+                    (render-node renderer tile transform))
+                  tiles)
 
-    (define (load-stack stack-data)
-      (map (lambda (layer)
-             (map (lambda (tile)
-                    (make-tile `((position . ((pos-x . ,(car tile))
-                                              (pos-y . ,(cdr tile)))))))
-                  layer))
-           stack-data))
+        ;; Draw rects for the playable tiles
+        (for-each (lambda (playable-tile)
+                    (with-state playable-tile ((tile layer)
+                                               (position pos-x pos-y))
+                      (let ((tile-rect (tile-pos->screen-rect pos-x pos-y layer transform)))
+                        (render-fill-rect
+                          renderer
+                          (list-set tile-rect 0 (+ (car tile-rect) 2))
+                          (make-color 255 0 0 75)))))
+                  playable)))
+
+
+    (define (tile-exists? layer-index tile-x tile-y occlusion-map)
+      (hamt-ref occlusion-map (list layer-index tile-x tile-y) #f))
+
+    (define (tile-playable? tile occlusion-map)
+      (with-state tile ((tile layer)
+                        (position pos-x pos-y))
+        (and
+          ;; To the left and right on the same layer
+          (not (and (or (tile-exists? layer (- pos-x 1) pos-y occlusion-map)
+                        (tile-exists? layer (- pos-x 1) (- pos-y 0.5) occlusion-map)
+                        (tile-exists? layer (- pos-x 1) (+ pos-y 0.5) occlusion-map))
+                    (or (tile-exists? layer (+ pos-x 1) pos-y occlusion-map)
+                        (tile-exists? layer (+ pos-x 1) (- pos-y 0.5) occlusion-map)
+                        (tile-exists? layer (+ pos-x 1) (+ pos-y 0.5) occlusion-map))))
+          ;; To a half-tile on the left and right on the layer above
+          (not (or (tile-exists? (+ layer 1) (- pos-x 0.5) pos-y occlusion-map)
+                   (tile-exists? (+ layer 1) (- pos-x 0.5) (- pos-y 0.5) occlusion-map)
+                   (tile-exists? (+ layer 1) (- pos-x 0.5) (+ pos-y 0.5) occlusion-map)))
+          (not (or (tile-exists? (+ layer 1) (+ pos-x 0.5) pos-y occlusion-map)
+                   (tile-exists? (+ layer 1) (+ pos-x 0.5) (- pos-y 0.5) occlusion-map)
+                   (tile-exists? (+ layer 1) (+ pos-x 0.5) (+ pos-y 0.5) occlusion-map))))))
+
+    (define (get-playable-tiles tiles occlusion-map)
+      (let next-tile ((tiles tiles)
+                      (playable '()))
+        (if (null? tiles)
+            playable
+            (next-tile
+              (cdr tiles)
+              (if (tile-playable? (car tiles) occlusion-map)
+                  (append playable (list (car tiles)))
+                  playable)))))
+
+    (define (as-flonum num)
+      (if (flonum? num)
+          num
+          (fixnum->flonum num)))
+
+    (define (load-stack state layers)
+      (let* ((occlusion-map (make-hamt))
+             (tiles (let next-layer ((layers layers)
+                                     (layer-index 0)
+                                     (tiles '()))
+                      (if (null? layers)
+                          tiles
+                          (next-layer
+                            (cdr layers)
+                            (+ layer-index 1)
+                            (append tiles
+                                    (map (lambda (tile)
+                                           (let ((tile-x (as-flonum (car tile)))
+                                                 (tile-y (as-flonum (cdr tile))))
+                                            (set! occlusion-map
+                                              (hamt-set occlusion-map
+                                                        (list layer-index tile-x tile-y)
+                                                        #t))
+                                            (make-tile `((tile .     ((layer . ,layer-index)))
+                                                         (position . ((pos-x . ,tile-x)
+                                                                      (pos-y . ,tile-y)))))))
+                                         (car layers))))))))
+        (update-state state
+          (stack (> (tiles tiles)
+                    (playable (get-playable-tiles tiles occlusion-map))
+                    (occlusion-map occlusion-map))))))
 
     (define (tile-run start-x pos-y num-tiles)
       (let next-tile ((tiles '())
@@ -65,30 +128,30 @@
     ;; This emulates the Easy board from Gnome Mahjongg
     (define test-stack
       `((;; Layer 1
-         (7.5 . 0)
-         (6.5 . 0)
          ,@(tile-run -5.5 -3.5 12)
          ,@(tile-run -3.5 -2.5 8)
          ,@(tile-run -4.5 -1.5 10)
+         (7.5 . 0)
+         (6.5 . 0)
          ,@(tile-run -5.5 -0.5 12)
          ,@(tile-run -5.5  0.5 12)
          ,@(tile-run -4.5  1.5 10)
          ,@(tile-run -3.5  2.5 8)
          ,@(tile-run -5.5  3.5 12)
          (-6.5 . 0))
-        ( ;; Layer 2
+        (;; Layer 2
          ,@(tile-run -2.5 -2.5 6)
          ,@(tile-run -2.5 -1.5 6)
          ,@(tile-run -2.5 -0.5 6)
          ,@(tile-run -2.5  0.5 6)
          ,@(tile-run -2.5  1.5 6)
          ,@(tile-run -2.5  2.5 6))
-        ( ;; Layer 3
+        (;; Layer 3
          ,@(tile-run -1.5 -1.5 4)
          ,@(tile-run -1.5 -0.5 4)
          ,@(tile-run -1.5  0.5 4)
          ,@(tile-run -1.5  1.5 4))
-        ( ;; Layer 4
+        (;; Layer 4
          ,@(tile-run -0.5 -0.5 2)
          ,@(tile-run -0.5  0.5 2))
         (;; Layer 5
@@ -96,11 +159,16 @@
 
     (define (stack-component)
       (make-component stack
-        (layers    (load-stack test-stack))
-        (renderers (add-method `(stack ,@stack-renderer)))))
+        (tiles         '())
+        (playable      '())
+        (occlusion-map (make-hamt))
+        (renderers     (add-method `(stack ,@stack-renderer)))))
 
     (define (make-stack component-values)
-      (make-node
-        'stack
-        component-values: component-values
-        (stack-component)))))
+      ;; TODO: This is a temporary hack!
+      (load-stack
+        (make-node
+          'stack
+          component-values: component-values
+          (stack-component))
+        test-stack))))

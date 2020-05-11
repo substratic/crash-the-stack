@@ -28,31 +28,35 @@
   (export make-tile
           tile-width
           tile-height
-          load-tile-assets)
+          load-tile-assets
+          tile-pos->screen-rect)
   (begin
 
     (define tile-width 30)
     (define tile-height 36)
     (define tile-image #f)
 
+    (define layer-offset-x 2)
+    (define layer-offset-y -3)
+
     (define (load-tile-assets)
       (set! tile-image (load-asset "images/tile.png")))
 
-    (define (tile-pos->screen-rect tile-x tile-y transform)
+    (define (tile-pos->screen-rect tile-x tile-y layer-index transform)
       (let ((screen-x (+ (- (* tile-x tile-width)  (/ tile-width 2))
                          (/ (transform-width transform) 2)
-                         (transform-x transform)))
+                         (* layer-offset-x layer-index)))
             (screen-y (+ (- (* tile-y tile-height) (/ tile-height 2))
                          (/ (transform-height transform) 2)
-                         (transform-y transform))))
+                         (* layer-offset-y layer-index))))
         (list (exact (truncate screen-x))
               (exact (truncate screen-y))
               tile-width tile-height)))
 
     (define (tile-renderer renderer state transform)
       (with-state state ((position pos-x pos-y)
-                         (tile symbol color))
-        (let* ((tile-rect (tile-pos->screen-rect pos-x pos-y transform))
+                         (tile glyph color layer))
+        (let* ((tile-rect (tile-pos->screen-rect pos-x pos-y layer transform))
                (tile-x (car  tile-rect))
                (tile-y (cadr tile-rect)))
           (render-image renderer
@@ -62,7 +66,8 @@
 
     (define (tile-component)
       (make-component tile
-        (symbol    "X")
+        (glyph     "X")
+        (layer     0)
         (color     (make-color 0 255 0))
         (renderers (add-method `(tile ,@tile-renderer)))))
 
