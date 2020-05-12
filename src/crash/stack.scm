@@ -22,14 +22,24 @@
           (crash tile)
           (substratic engine node)
           (substratic engine state)
+          (substratic engine events)
           (substratic engine renderer)
           (substratic engine transform)
           (substratic engine components))
   (export make-stack
+          stack-component
           load-stack
           tile-run
           adjacent-positions)
   (begin
+
+    (define board-width 16)
+    (define board-height 9)
+
+    (define (stack-handler event state event-sink)
+      (case (event-type event)
+       (stack/select-tile
+         (println "Selecting tile at: " (event-data event 'tile-x) " " (event-data event 'tile-y)))))
 
     (define (stack-renderer renderer state transform)
       (with-state state ((stack tiles playable occlusion-map))
@@ -48,6 +58,21 @@
                           (make-color 255 0 0 75)))))
                   playable)))
 
+    ;; Randomize the random source for "real" randomness
+    (random-source-randomize! default-random-source)
+
+    (define (generate-glyphs tile-count)
+      (let next-pair ((count (/ tile-count 2))
+                      (glyphs '()))
+        (if (< count 0)
+            (list-sort
+              (lambda (a b)
+                (equal? 1 (random-integer 2)))
+              glyphs)
+            (next-pair
+              (- count 1)
+              (let ((glyph (random-integer 42))) ;; 42 possible tile types
+                (append glyphs (list glyph glyph)))))))
 
     (define (tile-exists? layer-index tile-x tile-y occlusion-map)
       (hamt-ref occlusion-map (list layer-index tile-x tile-y) #f))
@@ -108,7 +133,12 @@
                                             (make-tile `((tile .     ((layer . ,layer-index)))
                                                          (position . ((pos-x . ,tile-x)
                                                                       (pos-y . ,tile-y)))))))
-                                         (car layers))))))))
+                                         (car layers)))))))
+             (tiles (map (lambda (tile glyph)
+                           (update-state tile (tile (> (glyph (number->string glyph))))))
+                         tiles
+                         (generate-glyphs (length tiles)))))
+
         (update-state state
           (stack (> (tiles tiles)
                     (playable (get-playable-tiles tiles occlusion-map))
@@ -125,50 +155,10 @@
               (- pos-x 1)
               (+ count 1)))))
 
-    ;; This emulates the Easy board from Gnome Mahjongg
-    (define test-stack
-      `((;; Layer 1
-         ,@(tile-run -5.5 -3.5 12)
-         ,@(tile-run -3.5 -2.5 8)
-         ,@(tile-run -4.5 -1.5 10)
-         (7.5 . 0)
-         (6.5 . 0)
-         ,@(tile-run -5.5 -0.5 12)
-         ,@(tile-run -5.5  0.5 12)
-         ,@(tile-run -4.5  1.5 10)
-         ,@(tile-run -3.5  2.5 8)
-         ,@(tile-run -5.5  3.5 12)
-         (-6.5 . 0))
-        (;; Layer 2
-         ,@(tile-run -2.5 -2.5 6)
-         ,@(tile-run -2.5 -1.5 6)
-         ,@(tile-run -2.5 -0.5 6)
-         ,@(tile-run -2.5  0.5 6)
-         ,@(tile-run -2.5  1.5 6)
-         ,@(tile-run -2.5  2.5 6))
-        (;; Layer 3
-         ,@(tile-run -1.5 -1.5 4)
-         ,@(tile-run -1.5 -0.5 4)
-         ,@(tile-run -1.5  0.5 4)
-         ,@(tile-run -1.5  1.5 4))
-        (;; Layer 4
-         ,@(tile-run -0.5 -0.5 2)
-         ,@(tile-run -0.5  0.5 2))
-        (;; Layer 5
-         (0 . 0))))
-
     (define (stack-component)
       (make-component stack
         (tiles         '())
         (playable      '())
         (occlusion-map (make-hamt))
-        (renderers     (add-method `(stack ,@stack-renderer)))))
-
-    (define (make-stack component-values)
-      ;; TODO: This is a temporary hack!
-      (load-stack
-        (make-node
-          'stack
-          component-values: component-values
-          (stack-component))
-        test-stack))))
+        (handlers      (add-method `(stack ,@stack-handler)))
+        (renderers     (add-method `(stack ,@stack-renderer)))))))

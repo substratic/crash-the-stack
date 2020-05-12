@@ -53,22 +53,40 @@
               (exact (truncate screen-y))
               tile-width tile-height)))
 
+    (define glyph-color #f)
+
     (define (tile-renderer renderer state transform)
       (with-state state ((position pos-x pos-y)
-                         (tile glyph color layer))
+                         (tile glyph layer))
         (let* ((tile-rect (tile-pos->screen-rect pos-x pos-y layer transform))
                (tile-x (car  tile-rect))
-               (tile-y (cadr tile-rect)))
+               (tile-y (cadr tile-rect))
+               (glyph-x (+ (+ layer-offset-x 2) tile-x (/ tile-width 2)))
+               (glyph-y (+ tile-y (/ tile-height 2) 3))) ;; TODO: No magic constants
+
+          ;; Draw the tile
           (render-image renderer
                         tile-image
                         tile-x
-                        tile-y))))
+                        tile-y)
+
+          (when (not glyph-color)
+            (set! glyph-color (make-color 52 158 255)))
+
+          ;; Glyph text
+          (render-text
+            renderer
+            glyph
+            *default-font*
+            glyph-x
+            glyph-y
+            align: 'center
+            color: glyph-color))))
 
     (define (tile-component)
       (make-component tile
-        (glyph     "X")
+        (glyph     "#")
         (layer     0)
-        (color     (make-color 0 255 0))
         (renderers (add-method `(tile ,@tile-renderer)))))
 
     (define (make-tile component-values)

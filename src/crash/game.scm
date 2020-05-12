@@ -36,22 +36,50 @@
         ((game/unpause)
          (update-state state (game (> (paused #f)))))))
 
-    (define (game-renderer renderer game-state transform)
-      (let* ((screen-width  (transform-width  transform))
-             (screen-height (transform-height transform)))
-        (render-node renderer (state-ref game-state '(game stack)) transform)
-        #!void))
-
     (define (game-component)
       (make-component game
         (paused     #f)
-        (stack      (make-stack '()))
         (handlers   (add-method `((quit ,@quit-event-handler)
-                                  (game ,@game-handler))))
-        (renderers  (add-method `(game ,@game-renderer)))))
+                                  (game ,@game-handler))))))
+
+    ;; This emulates the Easy board from Gnome Mahjongg
+    (define test-stack
+      `((;; Layer 1
+         ,@(tile-run -5.5 -3.5 12)
+         ,@(tile-run -3.5 -2.5 8)
+         ,@(tile-run -4.5 -1.5 10)
+         (7.5 . 0)
+         (6.5 . 0)
+         ,@(tile-run -5.5 -0.5 12)
+         ,@(tile-run -5.5  0.5 12)
+         ,@(tile-run -4.5  1.5 10)
+         ,@(tile-run -3.5  2.5 8)
+         ,@(tile-run -5.5  3.5 12)
+         (-6.5 . 0))
+        (;; Layer 2
+         ,@(tile-run -2.5 -2.5 6)
+         ,@(tile-run -2.5 -1.5 6)
+         ,@(tile-run -2.5 -0.5 6)
+         ,@(tile-run -2.5  0.5 6)
+         ,@(tile-run -2.5  1.5 6)
+         ,@(tile-run -2.5  2.5 6))
+        (;; Layer 3
+         ,@(tile-run -1.5 -1.5 4)
+         ,@(tile-run -1.5 -0.5 4)
+         ,@(tile-run -1.5  0.5 4)
+         ,@(tile-run -1.5  1.5 4))
+        (;; Layer 4
+         ,@(tile-run -0.5 -0.5 2)
+         ,@(tile-run -0.5  0.5 2))
+        (;; Layer 5
+         (0 . 0))))
 
     (define (game-mode #!key (initial-area #f))
-      (make-node
-        'game
-        (game-component)
-        (messages-component)))))
+      ;; TODO: This is a temporary hack!
+      (load-stack
+        (make-node
+          'game
+          (game-component)
+          (stack-component)
+          (messages-component))
+        test-stack))))
