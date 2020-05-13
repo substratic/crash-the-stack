@@ -28,6 +28,8 @@
   (export make-tile
           tile-width
           tile-height
+          layer-offset-x
+          layer-offset-y
           load-tile-assets
           tile-pos->screen-rect)
   (begin
@@ -42,13 +44,16 @@
     (define (load-tile-assets)
       (set! tile-image (load-asset "images/tile.png")))
 
-    (define (tile-pos->screen-rect tile-x tile-y layer-index transform)
-      (let ((screen-x (+ (- (* tile-x tile-width)  (/ tile-width 2))
-                         (/ (transform-width transform) 2)
-                         (* layer-offset-x layer-index)))
-            (screen-y (+ (- (* tile-y tile-height) (/ tile-height 2))
-                         (/ (transform-height transform) 2)
-                         (* layer-offset-y layer-index))))
+    (define (tile-pos->screen-rect tile-pos screen-width screen-height)
+      (let* ((layer-index (car tile-pos))
+             (tile-x (cadr tile-pos))
+             (tile-y (caddr tile-pos))
+             (screen-x (+ (- (* tile-x tile-width)  (/ tile-width 2))
+                          (/ screen-width 2)
+                          (* layer-offset-x layer-index)))
+             (screen-y (+ (- (* tile-y tile-height) (/ tile-height 2))
+                          (/ screen-height 2)
+                          (* layer-offset-y layer-index))))
         (list (exact (truncate screen-x))
               (exact (truncate screen-y))
               tile-width tile-height)))
@@ -58,7 +63,9 @@
     (define (tile-renderer renderer state transform)
       (with-state state ((position pos-x pos-y)
                          (tile glyph layer))
-        (let* ((tile-rect (tile-pos->screen-rect pos-x pos-y layer transform))
+        (let* ((tile-rect (tile-pos->screen-rect (list layer pos-x pos-y)
+                                                 (transform-width transform)
+                                                 (transform-height transform)))
                (tile-x (car  tile-rect))
                (tile-y (cadr tile-rect))
                (glyph-x (+ (+ layer-offset-x 2) tile-x (/ tile-width 2)))

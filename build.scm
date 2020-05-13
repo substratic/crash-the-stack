@@ -42,6 +42,9 @@
 
     modules: '(;; Components
 
+               ;; Controllers
+               "crash/controllers/mouse"
+
                ;; Game-specific code
                "crash/tile"
                "crash/stack"

@@ -19,6 +19,7 @@
 (define-library (crash game)
   (import (gambit)
           (crash stack)
+          (crash controllers mouse)
           (substratic engine node)
           (substratic engine state)
           (substratic engine assets)
@@ -80,6 +81,7 @@
         (make-node
           'game
           (game-component)
+          (mouse-controller-component)  ;; Lose the rat, chief
           (stack-component)
           (messages-component))
         test-stack))))
