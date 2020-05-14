@@ -43,6 +43,8 @@
     modules: '(;; Components
 
                ;; Controllers
+               "crash/controllers/wsad"
+               "crash/controllers/hack"
                "crash/controllers/mouse"
 
                ;; Game-specific code
