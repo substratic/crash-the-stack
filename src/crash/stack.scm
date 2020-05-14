@@ -23,6 +23,7 @@
           (substratic engine node)
           (substratic engine state)
           (substratic engine events)
+          (substratic engine logging)
           (substratic engine renderer)
           (substratic engine transform)
           (substratic engine components))
@@ -57,23 +58,80 @@
                                     (+ (caddr screen-rect) layer-offset-x)))
                        (>= pos-y (cadr screen-rect))
                        (<  pos-y (+ (cadr screen-rect) (cadddr screen-rect))))
-                  (car tiles)
+                  (begin
+                    ;; TODO: Convert this to a message event
+                    (println "\nSelected tile at pos:")
+                    (pp (car tiles))
+                    (car tiles))
                   (next-playable (cdr tiles)))))))
+
+    (define (find find-proc items)
+      (let next-item ((items items))
+        (if (pair? items)
+            (if (find-proc (car items))
+                (car items)
+                (next-item (cdr items)))
+            #f)))
+
+    (define (tile-at-pos? tile-pos)
+      (lambda (tile)
+        (equal? (get-tile-pos tile) tile-pos)))
+
+    (define (tiles-match? selected-tile-pos match-tile-pos tiles)
+      (let ((selected-tile (find (tile-at-pos? selected-tile-pos) tiles))
+            (match-tile    (find (tile-at-pos? match-tile-pos) tiles)))
+        (equal? (state-ref selected-tile '(tile glyph))
+                (state-ref match-tile '(tile glyph)))))
+
+    (define (remove-match state selected-tile-pos match-tile-pos)
+      (with-state state ((stack tiles playable occlusion-map))
+        ;; Remove tiles from tiles
+        (set! tiles (remp (tile-at-pos? selected-tile-pos) tiles))
+        (set! tiles (remp (tile-at-pos? match-tile-pos) tiles))
+
+        ;; Clear spots in occlusion-map
+        (set! occlusion-map (hamt-set occlusion-map (log-value "Removing selected:" selected-tile-pos) #f))
+        (set! occlusion-map (hamt-set occlusion-map (log-value "Removing matched:" match-tile-pos) #f))
+
+        ;; Recalculate playable tiles
+        (set! playable (get-playable-tiles tiles occlusion-map))
+
+        (update-state state (stack (> (tiles tiles)
+                                      (playable playable)
+                                      (match-pairs (get-match-pairs playable tiles))
+                                      (selected-tile #f)
+                                      (occlusion-map occlusion-map))))))
+
 
     (define (stack-handler event state event-sink)
       (case (event-type event)
        ((stack/select-tile)
         (println "Selecting tile at: " (event-data event 'tile-x) " " (event-data event 'tile-y)))
+
+       ((stack/shuffle)
+        (init-stack (state-ref state '(stack tiles)) state))
+
+       ((stack/reset)
+        (load-stack (state-ref state '(stack initial-stack))))
+
        ((stack/select-at)
         (when screen-width
-          (with-state state ((stack layer-count playable occlusion-map))
-            (let ((selected-tile
-                    (playable-tile-at-point
-                      (event-data event 'pos-x)
-                      (event-data event 'pos-y)
-                      (state-ref state '(stack playable)))))
-              (when selected-tile
-                (update-state state (stack (> (selected-tile selected-tile)))))))))))
+          (with-state state ((stack layer-count playable tiles
+                                    selected-tile occlusion-map))
+            (let ((new-selected-tile (playable-tile-at-point
+                                       (event-data event 'pos-x)
+                                       (event-data event 'pos-y)
+                                       (state-ref state '(stack playable)))))
+              (when new-selected-tile
+                (if (and selected-tile
+                        (not (equal? selected-tile new-selected-tile))
+                        (tiles-match? selected-tile new-selected-tile tiles))
+                    (let ((new-state (remove-match state selected-tile new-selected-tile)))
+                      (event-sink
+                        (make-event 'stack/changed
+                                    data: `((stack ,@new-state))))
+                      new-state)
+                    (update-state state (stack (> (selected-tile new-selected-tile))))))))))))
 
     (define (screen-pos->tile-pos screen-x screen-y screen-width screen-height layer-index)
       (let* ((board-x (- screen-x board-start-x (* (+ layer-index 1) layer-offset-x)))
@@ -123,6 +181,10 @@
                     (- (cadddr tile-rect) 5))
               (make-color 25 255 75 150))))))
 
+        ;; TODO: Draw reticules on the top and side to line up with selection for layer
+        ;; Make it look vaguely techy!
+        ;; Highlight tiles to show possible selections rather than drawing an ugly rectangle
+
     ;; Randomize the random source for "real" randomness
     (random-source-randomize! default-random-source)
 
@@ -143,23 +205,24 @@
       (hamt-ref occlusion-map (list layer-index tile-x tile-y) #f))
 
     (define (tile-playable? tile occlusion-map)
+      (define (occluded? layer pos-x pos-y)
+        (or (tile-exists? layer pos-x pos-y occlusion-map)
+            (tile-exists? layer pos-x (- pos-y 0.5) occlusion-map)
+            (tile-exists? layer pos-x (+ pos-y 0.5) occlusion-map)))
+
       (with-state tile ((tile layer)
                         (position pos-x pos-y))
         (and
           ;; To the left and right on the same layer
-          (not (and (or (tile-exists? layer (- pos-x 1) pos-y occlusion-map)
-                        (tile-exists? layer (- pos-x 1) (- pos-y 0.5) occlusion-map)
-                        (tile-exists? layer (- pos-x 1) (+ pos-y 0.5) occlusion-map))
-                    (or (tile-exists? layer (+ pos-x 1) pos-y occlusion-map)
-                        (tile-exists? layer (+ pos-x 1) (- pos-y 0.5) occlusion-map)
-                        (tile-exists? layer (+ pos-x 1) (+ pos-y 0.5) occlusion-map))))
+          (not (and (occluded? layer (- pos-x 1) pos-y)
+                    (occluded? layer (+ pos-x 1) pos-y)))
+
+          ;; At the same position on the layer above
+          (not (occluded? (+ layer 1) pos-x pos-y))
+
           ;; To a half-tile on the left and right on the layer above
-          (not (or (tile-exists? (+ layer 1) (- pos-x 0.5) pos-y occlusion-map)
-                   (tile-exists? (+ layer 1) (- pos-x 0.5) (- pos-y 0.5) occlusion-map)
-                   (tile-exists? (+ layer 1) (- pos-x 0.5) (+ pos-y 0.5) occlusion-map)))
-          (not (or (tile-exists? (+ layer 1) (+ pos-x 0.5) pos-y occlusion-map)
-                   (tile-exists? (+ layer 1) (+ pos-x 0.5) (- pos-y 0.5) occlusion-map)
-                   (tile-exists? (+ layer 1) (+ pos-x 0.5) (+ pos-y 0.5) occlusion-map))))))
+          (not (occluded? (+ layer 1) (- pos-x 0.5) pos-y))
+          (not (occluded? (+ layer 1) (+ pos-x 0.5) pos-y)))))
 
     (define (get-tile-pos tile)
       (with-state tile ((tile layer)
@@ -177,14 +240,58 @@
                   (append playable (list (get-tile-pos (car tiles))))
                   playable)))))
 
-    (define (as-flonum num)
-      (if (flonum? num)
-          num
-          (fixnum->flonum num)))
+    (define (get-match-pairs playable tiles)
+      (let ((glyph-table (make-hamt))
+            (matches '()))
+        (for-each (lambda (tile-pos)
+                    (let* ((tile (find (tile-at-pos? tile-pos) tiles))
+                           (glyph (state-ref tile '(tile glyph)))
+                           (match-pos (hamt-ref glyph-table glyph #f)))
+                      (if match-pos
+                          (begin
+                            (set! matches (append matches (list (cons match-pos tile-pos))))
+                            (set! glyph-table (hamt-set glyph-table glyph #f)))
+                          (set! glyph-table (hamt-set glyph-table glyph tile-pos)))))
+                  playable)
+        matches))
 
-    (define (load-stack state layers)
-      (let* ((occlusion-map (make-hamt))
-             (tiles (let next-layer ((layers layers)
+    (define (as-flonum num)
+      (let ((new-num
+              (if (flonum? num)
+                  num
+                  (fixnum->flonum num))))
+        ;; This tweak is surpisingly necessary in case a board author
+        ;; mechanically edits a coordinate to contain -0.0.  Gambit will
+        ;; "helpfully" retain the sign on the number even though it
+        ;; doesn't make any real sense.  Since we use these numbers
+        ;; verbatim to look up occluding tiles, the sign will cause
+        ;; positions arrived at by addition to not match what was stored
+        ;; in the hash map.
+        (if (equal? num -0.) 0. num)))
+
+    (define (make-occlusion-map tiles)
+      (fold (lambda (tile occlusion-map)
+              (hamt-set occlusion-map (get-tile-pos tile) #t))
+            (make-hamt)
+            tiles))
+
+    (define (init-stack tiles state)
+      (let* ((tiles (map (lambda (tile glyph)
+                           (update-state tile (tile (> (glyph (number->string glyph))))))
+                         tiles
+                         (generate-glyphs (length tiles))))
+             (occlusion-map (make-occlusion-map tiles))
+             (playable (get-playable-tiles tiles occlusion-map)))
+
+        (update-state state
+          (stack (> (tiles tiles)
+                    (playable    playable)
+                    (match-pairs (get-match-pairs playable tiles))
+                    (occlusion-map occlusion-map))))))
+
+    ;; TODO: Separate load-stack (load-tiles) and init-stack
+    (define (load-stack state stack)
+      (let* ((tiles (let next-layer ((layers stack)
                                      (layer-index 0)
                                      (tiles '()))
                       (if (null? layers)
@@ -196,24 +303,12 @@
                                     (map (lambda (tile)
                                            (let ((tile-x (as-flonum (car tile)))
                                                  (tile-y (as-flonum (cdr tile))))
-                                            (set! occlusion-map
-                                              (hamt-set occlusion-map
-                                                        (list layer-index tile-x tile-y)
-                                                        #t))
                                             (make-tile `((tile .     ((layer . ,layer-index)))
                                                          (position . ((pos-x . ,tile-x)
                                                                       (pos-y . ,tile-y)))))))
-                                         (car layers)))))))
-             (tiles (map (lambda (tile glyph)
-                           (update-state tile (tile (> (glyph (number->string glyph))))))
-                         tiles
-                         (generate-glyphs (length tiles)))))
-
-        (update-state state
-          (stack (> (tiles tiles)
-                    (layer-count (length layers))
-                    (playable (get-playable-tiles tiles occlusion-map))
-                    (occlusion-map occlusion-map))))))
+                                         (car layers))))))))
+           (update-state (init-stack tiles state)
+             (stack (> (initial-stack stack))))))
 
     (define (tile-run start-x pos-y num-tiles)
       (let next-tile ((tiles '())
@@ -229,9 +324,10 @@
     (define (stack-component)
       (make-component stack
         (tiles         '())
-        (layer-count   0)
         (playable      '())
+        (match-pairs   '())
         (selected-tile #f)
+        (initial-stack '())
         (occlusion-map (make-hamt))
         (handlers      (add-method `(stack ,@stack-handler)))
         (renderers     (add-method `(stack ,@stack-renderer)))))))
