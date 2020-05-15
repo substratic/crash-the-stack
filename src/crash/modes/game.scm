@@ -63,7 +63,7 @@
                    (println "No more pairs!")))))))
 
     (define (game-renderer renderer state transform)
-      #!void)
+      (render-clear renderer 43 4 82))
 
     (define (game-component)
       (make-component game

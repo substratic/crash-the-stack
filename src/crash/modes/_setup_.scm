@@ -16,22 +16,5 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with Crash The Stack.  If not, see <https://www.gnu.org/licenses/>.
 
-(import (_geiser)
-        (substratic engine assets)
-        (substratic engine config)
-        (substratic engine logging)
-        (crash main))
-
-;; Configure development environment
-(assets-base-path-set! "./dist/assets")
-(render-colliders-set! #f)
-
-;; Drop into a REPL before startup if requested
-(if (member "--repl" (command-line))
-    (##repl))
-
-;; Start it up!
-(main start-repl: #t
-      connect-emacs: #t
-      load-stack: #t
-      debug: #t)
+(define-module-alias (substratic sdl2)   (github.com/substratic sdl2))
+(define-module-alias (substratic engine) (github.com/substratic engine))

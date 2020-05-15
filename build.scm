@@ -50,7 +50,8 @@
                ;; Game-specific code
                "crash/tile"
                "crash/stack"
-               "crash/game"
+               "crash/modes/game"
+               "crash/modes/title-screen"
 
                ;; Program entrypoint
                "crash/main")

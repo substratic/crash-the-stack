@@ -18,8 +18,9 @@
 
 (define-library (crash main)
   (import (gambit)
-          (crash game)
           (crash tile)
+          (crash modes game)
+          (crash modes title-screen)
           (substratic sdl2)
           (substratic engine loop)
           (substratic engine assets)
@@ -28,7 +29,9 @@
   (begin
 
     (define (main #!key (start-repl #f)
-                        (connect-emacs #f))
+                        (connect-emacs #f)
+                        (load-stack #f)
+                        (debug #f))
 
       (when start-repl
         ;; Start a REPL for interactive development
@@ -84,11 +87,13 @@
         (load-tile-assets)
 
         ;; Start the game loop
-        (game-loop renderer (game-mode)
-                  screen-width screen-height
-                  enable-rpc: connect-emacs
-                  show-fps: #t
-                  clear-color: '(43 4 82))
+        (game-loop renderer
+                   (if load-stack
+                       (game-mode)
+                       (title-screen-mode))
+                   screen-width screen-height
+                   enable-rpc: connect-emacs
+                   show-fps: debug)
 
         (SDL_DestroyWindow window)
         (SDL_Quit)))))
