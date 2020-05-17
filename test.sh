@@ -3,7 +3,7 @@
 export DYLD_FRAMEWORK_PATH="$(pwd)/lib/macos"
 
 # Ensure dependencies
-. ./install-deps.sh
+./install-deps.sh
 
 # Don't enable debugging on CI
 debugarg="dar-,"
