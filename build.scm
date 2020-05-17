@@ -24,7 +24,7 @@
   (make-project
     name: "Crash The Stack"
     exe-name: "crash-the-stack"
-    version: "0.0.1"
+    version: "0.1.0"
 
     output-path:
       (lambda (target)
