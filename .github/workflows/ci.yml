@@ -127,5 +127,11 @@ jobs:
       env:
         BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
       run: |
-        # TODO: Actually upload artifacts!
-        ls -al
+        # Upload Windows build
+        ./butler push ./crash-the-stack-win-x64 fluxharmonic/crash-the-stack:windows-dev
+
+        # Upload Linux build
+        ./butler push ./crash-the-stack-linux-x64 fluxharmonic/crash-the-stack:linux-dev
+
+        # Upload macOS build
+        ./butler push ./crash-the-stack-macos-x64 fluxharmonic/crash-the-stack:macos-dev
