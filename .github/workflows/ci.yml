@@ -1,0 +1,109 @@
+name: CI
+
+env:
+  CI: true
+  GAMBIT_RELEASE: latest-16e8af1e
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  Windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install MSYS2
+      uses: numworks/setup-msys2@v1
+      with:
+        update: true
+        path-type: inherit
+
+    - name: Install Dependencies
+      shell: cmd
+      run: msys2do pacman -S --noconfirm autoconf make mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-libwinpthread-git mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_ttf
+
+    - name: Download Gambit Scheme
+      run: |
+        Invoke-WebRequest -Uri "https://github.com/daviwil/gambit/releases/download/${{ env.GAMBIT_RELEASE }}/gambit-win-x64-mingw.zip" -Outfile gambit.zip
+        Expand-Archive gambit.zip -DestinationPath gambit
+        rm -Force gambit.zip
+
+    # - name: Run Tests
+    #   shell: cmd
+    #   run: |
+    #     msys2do test.sh
+
+    - name: Build Code
+      shell: cmd
+      run: |
+        msys2do ./build.sh
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: crash-the-stack-win-x64
+        path: dist/
+
+  Linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install SDL2
+      run: |
+        sudo apt-get update
+        sudo apt-get install libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev
+
+    - name: Download Gambit Scheme
+      run: |
+        wget https://github.com/daviwil/gambit/releases/download/${{ env.GAMBIT_RELEASE }}/gambit-linux-x64.zip
+        unzip gambit-linux-x64.zip -d gambit
+
+    - name: Run Tests
+      run: ./test.sh
+
+    - name: Build Code
+      run: ./build.sh
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: crash-the-stack-linux-x64
+        path: dist/
+
+  macOS:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install SDL2
+      run: ./scripts/macos/download-sdl.sh
+
+    - name: Download Gambit Scheme
+      run: |
+        wget https://github.com/daviwil/gambit/releases/download/${{ env.GAMBIT_RELEASE }}/gambit-macos-x64.zip
+        unzip gambit-macos-x64.zip -d gambit
+
+    - name: Run Tests
+      run: ./test.sh
+
+    - name: Build Code
+      run: |
+        ./scripts/macos/create-app.sh
+        ./build.sh
+
+        mkdir dist/app
+        mv dist/crash-the-stack.app dist/app
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: crash-the-stack-macos-x64
+        path: dist/app
