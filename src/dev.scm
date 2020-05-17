@@ -33,5 +33,5 @@
 ;; Start it up!
 (main start-repl: #t
       connect-emacs: #t
-      load-stack: #t
+      load-stack: "stacks/test/small.scm"
       debug: #t)

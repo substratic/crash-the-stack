@@ -22,6 +22,7 @@
           (crash tile)
           (substratic engine node)
           (substratic engine state)
+          (substratic engine assets)
           (substratic engine events)
           (substratic engine logging)
           (substratic engine renderer)
@@ -30,6 +31,7 @@
   (export make-stack
           stack-component
           load-stack
+          load-stack-file
           tile-run)
   (begin
 
@@ -289,8 +291,25 @@
                     (match-pairs (get-match-pairs playable tiles))
                     (occlusion-map occlusion-map))))))
 
+    (define (load-stack-file stack-file state)
+      (let* ((stack-data (read (open-file (assets-path stack-file)))))
+        (when (not (equal? (car stack-data) 'stack))
+          (raise (string-append "load-stack: Cannot load data of type " (car area))))
+        (load-stack
+          (map (lambda (layer)
+                (fold (lambda (pos-or-run pos-list)
+                        (if (list? pos-or-run)
+                            (if (equal? (car pos-or-run) 'run)
+                                (append pos-list (apply tile-run (cdr pos-or-run)))
+                                (raise (string-append "load-stack-file: Unexpected operation " (car pos-or-run))))
+                            (append pos-list (list pos-or-run))))
+                      '()
+                      layer))
+              (cdr stack-data))
+          state)))
+
     ;; TODO: Separate load-stack (load-tiles) and init-stack
-    (define (load-stack state stack)
+    (define (load-stack stack state)
       (let* ((tiles (let next-layer ((layers stack)
                                      (layer-index 0)
                                      (tiles '()))

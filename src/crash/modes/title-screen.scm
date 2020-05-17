@@ -94,12 +94,20 @@
                     (- (transform-height transform) 25)
                     font: *default-font-small*))
 
+    (define (setup-game-mode)
+      ;; TODO: Support continuing from saved game
+      (game-mode stack-file: "stacks/test/gnome-easy.scm"))
+
+    (define (start-game)
+      (lambda (state event-sink)
+        (event-sink (make-event
+                      'engine/change-mode
+                      data: `((next-mode ,@setup-game-mode))))))
+
     (define main-menu-items
-      `((new      "New Game" ,(lambda (state event-sink)
-                                (event-sink (make-event
-                                             'engine/change-mode
-                                             data: `((next-mode ,@game-mode))))))
-        (continue "Continue" #f)
+      `((new      "New Game" ,(start-game))
+
+        (continue "Continue" ,(start-game))
         (options  "Options"  #f)
         (credits  "Credits"  #f)
         (exit     "Exit"     ,(lambda (state event-sink)

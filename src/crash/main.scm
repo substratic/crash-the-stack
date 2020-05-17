@@ -89,7 +89,7 @@
         ;; Start the game loop
         (game-loop renderer
                    (if load-stack
-                       (game-mode)
+                       (game-mode stack-file: load-stack)
                        (title-screen-mode))
                    screen-width screen-height
                    enable-rpc: connect-emacs

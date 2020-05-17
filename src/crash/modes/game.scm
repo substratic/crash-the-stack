@@ -25,6 +25,7 @@
           (substratic engine state)
           (substratic engine assets)
           (substratic engine events)
+          (substratic engine macros)
           (substratic engine keyboard)
           (substratic engine renderer)
           (substratic engine transform)
@@ -73,60 +74,11 @@
                                   (game ,@game-handler))))
         (renderers  (add-method `((game ,@game-renderer))))))
 
-    ;; A simple test stack that I can finish faster
-    (define small-stack
-      `((;; Layer 1
-         ,@(tile-run -2.5 -1.5 5)
-         ,@(tile-run -2.5 -0.5 5)
-         ,@(tile-run -2.5  0.5 5)
-         ,@(tile-run -2.5  1.5 5))
-        (;; Layer 2
-         ,@(tile-run -2.0 -1.0 4)
-         ,@(tile-run -2.0 -0.0 4)
-         ,@(tile-run -2.0  1.0 4))
-        (;; Layer 3
-         ,@(tile-run -1.0 -0.5 2)
-         ,@(tile-run -1.0  0.5 2))))
-
-    ;; This emulates the Easy board from Gnome Mahjongg
-    (define gnome-mahjongg-easy
-      `((;; Layer 1
-         ,@(tile-run -5.5 -3.5 12)
-         ,@(tile-run -3.5 -2.5 8)
-         ,@(tile-run -4.5 -1.5 10)
-         (7.5 . 0)
-         (6.5 . 0)
-         ,@(tile-run -5.5 -0.5 12)
-         ,@(tile-run -5.5  0.5 12)
-         ,@(tile-run -4.5  1.5 10)
-         ,@(tile-run -3.5  2.5 8)
-         ,@(tile-run -5.5  3.5 12)
-         (-6.5 . 0))
-        (;; Layer 2
-         ,@(tile-run -2.5 -2.5 6)
-         ,@(tile-run -2.5 -1.5 6)
-         ,@(tile-run -2.5 -0.5 6)
-         ,@(tile-run -2.5  0.5 6)
-         ,@(tile-run -2.5  1.5 6)
-         ,@(tile-run -2.5  2.5 6))
-        (;; Layer 3
-         ,@(tile-run -1.5 -1.5 4)
-         ,@(tile-run -1.5 -0.5 4)
-         ,@(tile-run -1.5  0.5 4)
-         ,@(tile-run -1.5  1.5 4))
-        (;; Layer 4
-         ,@(tile-run -0.5 -0.5 2)
-         ,@(tile-run -0.5  0.5 2))
-        (;; Layer 5
-         (0 . 0))))
-
-    (define (game-mode #!key (initial-area #f))
-      ;; TODO: This is a temporary hack!
-      (load-stack
-        (make-node
-          'game
-          (game-component)
-          (mouse-controller-component)  ;; Lose the rat, chief
-          (stack-component)
-          (messages-component))
-        small-stack))))
+    (define (game-mode #!key (stack-file #f))
+      (-> (make-node
+            'game
+            (game-component)
+            (mouse-controller-component)  ;; Lose the rat, chief
+            (stack-component)
+            (messages-component))
+          (load-stack-file stack-file)))))
