@@ -107,3 +107,24 @@ jobs:
       with:
         name: crash-the-stack-macos-x64
         path: dist/app
+
+  Itch-Upload:
+    runs-on: ubuntu-latest
+    needs: [Windows, Linux, macOS]
+
+    - name: Download Artifacts
+      uses: actions/download-artifact@v2
+
+    - name: Download Butler
+      run: |
+        wget -O butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+        unzip butler.zip
+        chmod +x butler
+        ./butler -V
+
+    - name: Upload Artifacts to Itch.io
+      env:
+        BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+      run: |
+        # TODO: Actually upload artifacts!
+        ls -al
