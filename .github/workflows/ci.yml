@@ -84,7 +84,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Install SDL2
-      run: ./scripts/macos/download-sdl.sh
+      run: brew install sdl2 sdl2_image sdl2_ttf
 
     - name: Download Gambit Scheme
       run: |
