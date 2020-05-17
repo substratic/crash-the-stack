@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 SUBSTRATIC_VERSION=
 
