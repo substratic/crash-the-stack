@@ -19,12 +19,16 @@
 (define-library (crash modes title-screen)
   (import (gambit)
           (crash modes game)
+          (crash components menu)
           (crash controllers mouse)
           (substratic sdl2)
           (substratic engine node)
           (substratic engine state)
           (substratic engine assets)
+          (substratic engine easing)
           (substratic engine events)
+          (substratic engine macros)
+          (substratic engine logging)
           (substratic engine keyboard)
           (substratic engine renderer)
           (substratic engine transform)
@@ -32,57 +36,116 @@
   (export title-screen-mode)
   (begin
 
-    (define (ease-in-out value)
-      (cond
-        ((> value 0.75) (max 0.0 (- 1.0 (/ (- value 0.75) 0.25))))
-        ((> value 0.25) 1.0)
-        (else (min 1.0 (/ value 0.25)))))
+    (define title-phase-time 4.0)
 
-    (define *title-phase-time* 4.0)
+    (define (timed-phase #!key duration on-start on-end)
+      (define (timed-phase-updater state time-step event-sink)
+        (with-state state ((timed-phase phase-time))
+          (set! phase-time (+ phase-time time-step))
+          (if (> phase-time duration)
+              (-> state
+                  (remove-component 'timed-phase)
+                  (on-end))
+              (update-state state (timed-phase (> (phase-time phase-time)))))))
 
-    (define (title-cards-updater state time-step event-sink)
-      (with-state state ((title-cards phase sequence-time))
-        (let* ((phase-time *title-phase-time*)
-               (sequence-time (+ time-step sequence-time)))
+      (lambda (node)
+        (-> node
+            ((make-component timed-phase
+               (phase-time 0.0)
+               (updaters   (add-method `(timed-phase ,@timed-phase-updater)))))
+            (on-start))))
 
-          (when (> sequence-time phase-time)
-            (set! phase (+ phase 1))
-            (set! sequence-time (- sequence-time phase-time)))
-
-          (when (equal? phase 4)
-            (event-sink (make-event 'engine/change-mode data: `((next-mode ,@game-mode)))))
-
-          (update-state state
-            (title-cards (> (phase phase)
-                            (sequence-time sequence-time)))))))
-
-    (define (title-cards-renderer renderer state transform)
+    (define (publisher-card-renderer renderer state transform)
       (render-clear renderer 0 0 0)
+      (render-text renderer
+                   "Flux Harmonic Presents"
+                   *default-font*
+                   (/ (transform-width transform) 2)
+                   (/ (transform-height transform) 2)
+                   align: 'center))
 
-      (with-state state ((title-cards phase sequence-time))
-        (let* ((width (transform-width transform))
-               (height (transform-height transform))
-               (fade-alpha (ease-in-out (/ sequence-time *title-phase-time*)))
-               (text (case phase
-                      ((1) "Flux Harmonic Presents")
-                      ((2) "A game by David Wilson")
-                      ((3) "CRASH THE STACK")
-                      (else " "))))
+    (define (developer-card-renderer renderer state transform)
+      (render-clear renderer 0 0 0)
+      (render-text renderer
+                   "A game by David Wilson"
+                   *default-font*
+                   (/ (transform-width transform) 2)
+                   (/ (transform-height transform) 2)
+                   align: 'center))
 
-          (render-text renderer text *default-font*
-                       (/ width 2) (/ height 2)
-                       align: 'center
-                       alpha: (exact (floor (* fade-alpha 255)))))))
+    (define (title-screen-renderer renderer state transform)
+      (define (render-line text screen-y #!key (font *default-font*)
+                                               (color #f))
+        (render-text renderer
+                     text
+                     font
+                     (/ (transform-width transform) 2)
+                     screen-y
+                     color: color
+                     align: 'center))
 
-    (define (title-cards-component)
-      (make-component title-cards
-        (phase          1)
-        (sequence-time  0.0)
-        (handlers       (add-method `(quit ,@quit-event-handler)))
-        (updaters       (add-method `(sequence ,@title-cards-updater)))
-        (renderers      (add-method `(title-screen ,@title-cards-renderer)))))
+      (render-clear renderer 0 0 0)
+      (render-line "CRASH THE STACK"
+                   (/ (transform-height transform) 4))
+
+      ;; Menu is rendered by menu-component
+
+      (render-line "//  Copyright (c) 2020 David Wilson  ||  Published by Flux Harmonic LLC  \\\\"
+                    (- (transform-height transform) 25)
+                    font: *default-font-small*))
+
+    (define main-menu-items
+      `((new      "New Game" ,(lambda (state event-sink)
+                                (event-sink (make-event
+                                             'engine/change-mode
+                                             data: `((next-mode ,@game-mode))))))
+        (continue "Continue" #f)
+        (options  "Options"  #f)
+        (credits  "Credits"  #f)
+        (exit     "Exit"     ,(lambda (state event-sink)
+                                (event-sink (make-event 'engine/quit))))))
+
+    (define publisher-card-phase
+      (timed-phase
+        duration: title-phase-time
+        on-start:
+        (lambda (node)
+          (-> node
+              ((make-component card
+                 (renderers (add-method `(card ,@publisher-card-renderer)))))
+              ((screen-fade-component
+                duration: title-phase-time
+                mode: 'in-out))))
+
+        on-end:
+        (lambda (node)
+          (developer-card-phase node))))
+
+    (define developer-card-phase
+      (timed-phase
+        duration: title-phase-time
+        on-start:
+        (lambda (node)
+          (-> node
+              ((make-component card
+                 (renderers (add-method `(card ,@developer-card-renderer)))))
+              ((screen-fade-component
+                duration: title-phase-time
+                mode: 'in-out))))
+
+        on-end:
+        (lambda (node)
+          (-> node
+              (remove-component 'card)
+              (remove-component 'screen-fade)
+              (title-screen-phase)))))
+
+    (define (title-screen-phase node)
+      (-> node
+          ((make-component title-screen
+             (renderers (add-method `(title-screen ,@title-screen-renderer)))))
+          ((menu-component items: main-menu-items))))
 
     (define (title-screen-mode)
-      (make-node
-        'title-screen
-        (title-cards-component)))))
+      (-> (make-node 'title-screen)
+          (publisher-card-phase)))))

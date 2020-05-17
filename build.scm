@@ -41,6 +41,7 @@
             '("src/dev.scm")))
 
     modules: '(;; Components
+               "crash/components/menu"
 
                ;; Controllers
                "crash/controllers/wsad"
