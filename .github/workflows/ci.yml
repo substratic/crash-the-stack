@@ -2,7 +2,7 @@ name: CI
 
 env:
   CI: true
-  GAMBIT_RELEASE: latest-af59c9f
+  GAMBIT_RELEASE: latest-c590741
 
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
     - name: Run Tests
       shell: cmd
       run: |
-        msys2do test.sh
+        msys2do ./test.sh
 
     - name: Build Code
       shell: cmd
