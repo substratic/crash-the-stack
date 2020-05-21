@@ -18,25 +18,23 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Install MSYS2
-      uses: numworks/setup-msys2@v1
+      uses: eine/setup-msys2@v0
       with:
         update: true
+        install: "autoconf make mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-libwinpthread-git mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_ttf"
         path-type: inherit
-
-    - name: Install Dependencies
-      shell: cmd
-      run: msys2do pacman -S --noconfirm autoconf make mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-libwinpthread-git mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_ttf
 
     - name: Download Gambit Scheme
       run: |
         Invoke-WebRequest -Uri "https://github.com/daviwil/gambit/releases/download/${{ env.GAMBIT_RELEASE }}/gambit-win-x64-mingw.zip" -Outfile gambit.zip
         Expand-Archive gambit.zip -DestinationPath gambit
         rm -Force gambit.zip
+        msys2do chmod +x ./gambit/bin/*
 
-    # - name: Run Tests
-    #   shell: cmd
-    #   run: |
-    #     msys2do test.sh
+    - name: Run Tests
+      shell: cmd
+      run: |
+        msys2do test.sh
 
     - name: Build Code
       shell: cmd
@@ -64,6 +62,7 @@ jobs:
       run: |
         wget https://github.com/daviwil/gambit/releases/download/${{ env.GAMBIT_RELEASE }}/gambit-linux-x64.zip
         unzip gambit-linux-x64.zip -d gambit
+        chmod +x ./gambit/bin/*
 
     - name: Run Tests
       run: ./test.sh
@@ -90,6 +89,7 @@ jobs:
       run: |
         wget https://github.com/daviwil/gambit/releases/download/${{ env.GAMBIT_RELEASE }}/gambit-macos-x64.zip
         unzip gambit-macos-x64.zip -d gambit
+        chmod +x ./gambit/bin/*
 
     - name: Run Tests
       run: ./test.sh
