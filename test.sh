@@ -11,4 +11,4 @@ if [ "$CI" = "true" ]; then
     debugarg=""
 fi
 
-./gambit/bin/gsi -:$debugarg~~bin./gambit/bin,~~lib=./gambit/lib,~~userlib=./lib src/ lib/ build.scm --test
+./gambit/bin/gsi -:$debugarg~~bin=./gambit/bin,~~lib=./gambit/lib,~~userlib=./lib src/ lib/ build.scm --test
