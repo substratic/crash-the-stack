@@ -194,7 +194,7 @@
     (define (generate-glyphs tile-count)
       (let next-pair ((count (/ tile-count 2))
                       (glyphs '()))
-        (if (< count 0)
+        (if (equal? count 0)
             (list-sort
               (lambda (a b)
                 (equal? 1 (random-integer 2)))
