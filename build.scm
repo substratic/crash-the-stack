@@ -57,7 +57,7 @@
                ;; Program entrypoint
                "crash/main")
 
-    test-files: '()))
+    test-files: '("src/crash/stack.test.scm")))
 
 (cond
  ((member "--dev" (command-line)) (run-interactively crash-the-stack))

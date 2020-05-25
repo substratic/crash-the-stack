@@ -32,7 +32,8 @@
           stack-component
           load-stack
           load-stack-file
-          tile-run)
+          get-playable-tiles
+          make-occlusion-map)
   (begin
 
     (define board-width 16)
@@ -295,7 +296,9 @@
       (let* ((stack-data (read (open-file (assets-path stack-file)))))
         (when (not (equal? (car stack-data) 'stack))
           (raise (string-append "load-stack: Cannot load data of type " (car area))))
-        (load-stack
+        (load-stack (cdr stack-data) state)))
+
+    (define (stack-data->layers stack-data)
           (map (lambda (layer)
                 (fold (lambda (pos-or-run pos-list)
                         (if (list? pos-or-run)
@@ -305,12 +308,12 @@
                             (append pos-list (list pos-or-run))))
                       '()
                       layer))
-              (cdr stack-data))
-          state)))
+              stack-data))
 
     ;; TODO: Separate load-stack (load-tiles) and init-stack
-    (define (load-stack stack state)
-      (let* ((tiles (let next-layer ((layers stack)
+    (define (load-stack stack-data state)
+      (let* ((layers (stack-data->layers stack-data))
+             (tiles (let next-layer ((layers layers)
                                      (layer-index 0)
                                      (tiles '()))
                       (if (null? layers)
@@ -327,7 +330,7 @@
                                                                       (pos-y . ,tile-y)))))))
                                          (car layers))))))))
            (update-state (init-stack tiles state)
-             (stack (> (initial-stack stack))))))
+             (stack (> (initial-stack layers))))))
 
     (define (tile-run start-x pos-y num-tiles)
       (let next-tile ((tiles '())
