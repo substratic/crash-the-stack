@@ -2,7 +2,7 @@ name: CI
 
 env:
   CI: true
-  GAMBIT_RELEASE: latest-520ec5a
+  GAMBIT_RELEASE: latest-39735fd
 
 on:
   push:
