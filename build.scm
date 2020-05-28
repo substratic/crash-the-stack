@@ -40,7 +40,10 @@
             '("src/release.scm")
             '("src/dev.scm")))
 
-    modules: '(;; Components
+    modules: '(;; Dependencies
+               "_hamt"
+
+               ;; Components
                "crash/components/menu"
 
                ;; Controllers
