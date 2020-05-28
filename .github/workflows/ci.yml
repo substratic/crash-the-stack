@@ -2,7 +2,6 @@ name: CI
 
 env:
   CI: true
-  GAMBIT_RELEASE: latest-39735fd
 
 on:
   push:
@@ -25,11 +24,13 @@ jobs:
         path-type: inherit
 
     - name: Download Gambit Scheme
-      run: |
-        Invoke-WebRequest -Uri "https://github.com/daviwil/gambit/releases/download/${{ env.GAMBIT_RELEASE }}/gambit-win-x64-mingw.zip" -Outfile gambit.zip
-        Expand-Archive gambit.zip -DestinationPath gambit
-        rm -Force gambit.zip
-        msys2do chmod +x ./gambit/bin/*
+      uses: daviwil/download-gambit@v1
+      with:
+        os: win-mingw
+        repo: daviwil/gambit
+        branch: build-gambit-patched
+        workflow-name: Build Gambit
+        artifact-token: ${{ secrets.ARTIFACT_TOKEN }}
 
     - name: Run Tests
       shell: cmd
@@ -59,10 +60,12 @@ jobs:
         sudo apt-get install libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev
 
     - name: Download Gambit Scheme
-      run: |
-        wget https://github.com/daviwil/gambit/releases/download/${{ env.GAMBIT_RELEASE }}/gambit-linux-x64.zip
-        unzip gambit-linux-x64.zip -d gambit
-        chmod +x ./gambit/bin/*
+      uses: daviwil/download-gambit@v1
+      with:
+        repo: daviwil/gambit
+        branch: build-gambit-patched
+        workflow-name: Build Gambit
+        artifact-token: ${{ secrets.ARTIFACT_TOKEN }}
 
     - name: Run Tests
       run: ./test.sh
@@ -86,10 +89,12 @@ jobs:
       run: brew install pkg-config sdl2 sdl2_image sdl2_ttf
 
     - name: Download Gambit Scheme
-      run: |
-        wget https://github.com/daviwil/gambit/releases/download/${{ env.GAMBIT_RELEASE }}/gambit-macos-x64.zip
-        unzip gambit-macos-x64.zip -d gambit
-        chmod +x ./gambit/bin/*
+      uses: daviwil/download-gambit@v1
+      with:
+        repo: daviwil/gambit
+        branch: build-gambit-patched
+        workflow-name: Build Gambit
+        artifact-token: ${{ secrets.ARTIFACT_TOKEN }}
 
     - name: Run Tests
       run: ./test.sh
