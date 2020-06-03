@@ -106,7 +106,7 @@
                                       (occlusion-map occlusion-map))))))
 
 
-    (define (stack-handler event state event-sink)
+    (define (stack-handler node context event event-sink)
       (case (event-type event)
        ((stack/select-tile)
         (println "Selecting tile at: " (event-data event 'tile-x) " " (event-data event 'tile-y)))
@@ -119,22 +119,22 @@
 
        ((stack/select-at)
         (when screen-width
-          (with-state state ((stack layer-count playable tiles
-                                    selected-tile occlusion-map))
+          (with-state node ((stack layer-count playable tiles
+                                   selected-tile occlusion-map))
             (let ((new-selected-tile (playable-tile-at-point
                                        (event-data event 'pos-x)
                                        (event-data event 'pos-y)
-                                       (state-ref state '(stack playable)))))
+                                       (state-ref node '(stack playable)))))
               (when new-selected-tile
                 (if (and selected-tile
                         (not (equal? selected-tile new-selected-tile))
                         (tiles-match? selected-tile new-selected-tile tiles))
-                    (let ((new-state (remove-match state selected-tile new-selected-tile)))
+                    (let ((new-node (remove-match node selected-tile new-selected-tile)))
                       (event-sink
                         (make-event 'stack/changed
-                                    data: `((stack ,@new-state))))
-                      new-state)
-                    (update-state state (stack (> (selected-tile new-selected-tile))))))))))))
+                                    data: `((stack ,@new-node))))
+                      new-node)
+                    (update-state node (stack (> (selected-tile new-selected-tile))))))))))))
 
     (define (screen-pos->tile-pos screen-x screen-y screen-width screen-height layer-index)
       (let* ((board-x (- screen-x board-start-x (* (+ layer-index 1) layer-offset-x)))
@@ -143,20 +143,20 @@
              (tile-y (inexact (/ (- (truncate (/ board-y (/ tile-height 2))) board-height) 2))))
         (list layer-index tile-x tile-y)))
 
-    (define (stack-renderer renderer state transform)
+    (define (stack-renderer node context renderer)
       ;; Store the screen and board sizes
       (unless screen-width
-        (set! screen-width  (transform-width  transform))
-        (set! screen-height (transform-height transform))
+        (set! screen-width  (state-ref context 'screen-width))
+        (set! screen-height (state-ref context 'screen-height))
         (set! board-screen-width  (* board-width  tile-width))
         (set! board-screen-height (* board-height tile-height))
         (set! board-start-x (/ (- screen-width  (* board-width  tile-width)) 2))
         (set! board-start-y (/ (- screen-height (* board-height tile-height)) 2)))
 
-      (with-state state ((stack tiles playable selected-tile
-                                occlusion-map select-region))
+      (with-state node ((stack tiles playable selected-tile
+                               occlusion-map select-region))
         (for-each (lambda (tile)
-                    (render-node renderer tile transform))
+                    (render-node tile context renderer))
                   tiles)
 
         (when show-playable-tiles

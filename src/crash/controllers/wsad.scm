@@ -27,7 +27,7 @@
   (export wsad-controller-component)
   (begin
 
-    (define (wsad-controller-handler event state event-sink)
+    (define (wsad-controller-handler node context event event-sink)
       (case (event-type event)
        ((keyboard)
         (handle-key event

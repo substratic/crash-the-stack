@@ -27,7 +27,7 @@
   (export mouse-controller-component)
   (begin
 
-    (define (mouse-controller-handler event state event-sink)
+    (define (mouse-controller-handler node context event event-sink)
       (case (event-type event)
        ((mouse/button)
         (when (and (equal? (event-data event 'button)    'left)

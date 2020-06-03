@@ -16,7 +16,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with Crash The Stack.  If not, see <https://www.gnu.org/licenses/>.
 
-(define-library (crash game)
+(define-library (crash modes game)
   (import (gambit)
           (crash stack)
           (crash controllers mouse)
@@ -33,13 +33,13 @@
   (export game-mode)
   (begin
 
-    (define (game-handler event state event-sink)
+    (define (game-handler node context event event-sink)
       (case (event-type event)
         ((game/pause)
-         (update-state state (game (> (paused #t)))))
+         (update-state node (game (> (paused #t)))))
 
         ((game/unpause)
-         (update-state state (game (> (paused #f)))))
+         (update-state node (game (> (paused #f)))))
 
         ((keyboard)
          (handle-key event
@@ -63,7 +63,7 @@
                    (println "All tiles removed!")
                    (println "No more pairs!")))))))
 
-    (define (game-renderer renderer state transform)
+    (define (game-renderer node context renderer)
       (render-clear renderer 43 4 82))
 
     (define (game-component)

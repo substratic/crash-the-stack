@@ -27,7 +27,7 @@
   (export hack-controller-component)
   (begin
 
-    (define (hack-controller-handler event state event-sink)
+    (define (hack-controller-handler node context event event-sink)
       (case (event-type event)
        ((keyboard)
         (handle-key event

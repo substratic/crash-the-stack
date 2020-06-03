@@ -39,14 +39,14 @@
     (define title-phase-time 4.0)
 
     (define (timed-phase #!key duration on-start on-end)
-      (define (timed-phase-updater state time-step event-sink)
-        (with-state state ((timed-phase phase-time))
+      (define (timed-phase-updater node context time-step event-sink)
+        (with-state node ((timed-phase phase-time))
           (set! phase-time (+ phase-time time-step))
           (if (> phase-time duration)
-              (-> state
+              (-> node
                   (remove-component 'timed-phase)
                   (on-end))
-              (update-state state (timed-phase (> (phase-time phase-time)))))))
+              (update-state node (timed-phase (> (phase-time phase-time)))))))
 
       (lambda (node)
         (-> node
@@ -55,43 +55,43 @@
                (updaters   (add-method `(timed-phase ,@timed-phase-updater)))))
             (on-start))))
 
-    (define (publisher-card-renderer renderer state transform)
+    (define (publisher-card-renderer node context renderer)
       (render-clear renderer 0 0 0)
       (render-text renderer
                    "Flux Harmonic Presents"
                    *default-font*
-                   (/ (transform-width transform) 2)
-                   (/ (transform-height transform) 2)
+                   (/ (state-ref context 'screen-width) 2)
+                   (/ (state-ref context 'screen-height) 2)
                    align: 'center))
 
-    (define (developer-card-renderer renderer state transform)
+    (define (developer-card-renderer node context renderer)
       (render-clear renderer 0 0 0)
       (render-text renderer
                    "A game by David Wilson"
                    *default-font*
-                   (/ (transform-width transform) 2)
-                   (/ (transform-height transform) 2)
+                   (/ (state-ref context 'screen-width) 2)
+                   (/ (state-ref context 'screen-height) 2)
                    align: 'center))
 
-    (define (title-screen-renderer renderer state transform)
+    (define (title-screen-renderer node context renderer)
       (define (render-line text screen-y #!key (font *default-font*)
                                                (color #f))
         (render-text renderer
                      text
                      font
-                     (/ (transform-width transform) 2)
+                     (/ (state-ref context 'screen-width) 2)
                      screen-y
                      color: color
                      align: 'center))
 
       (render-clear renderer 0 0 0)
       (render-line "CRASH THE STACK"
-                   (/ (transform-height transform) 4))
+                   (/ (state-ref context 'screen-height) 4))
 
       ;; Menu is rendered by menu-component
 
       (render-line "//  Copyright (c) 2020 David Wilson  ||  Published by Flux Harmonic LLC  \\\\"
-                    (- (transform-height transform) 25)
+                    (- (state-ref context 'screen-height) 25)
                     font: *default-font-small*))
 
     (define (setup-game-mode)

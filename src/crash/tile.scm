@@ -60,12 +60,12 @@
 
     (define glyph-color #f)
 
-    (define (tile-renderer renderer state transform)
-      (with-state state ((position pos-x pos-y)
-                         (tile glyph layer))
+    (define (tile-renderer node context renderer)
+      (with-state node ((position pos-x pos-y)
+                        (tile glyph layer))
         (let* ((tile-rect (tile-pos->screen-rect (list layer pos-x pos-y)
-                                                 (transform-width transform)
-                                                 (transform-height transform)))
+                                                 (state-ref context 'screen-width)
+                                                 (state-ref context 'screen-height)))
                (tile-x (car  tile-rect))
                (tile-y (cadr tile-rect))
                (glyph-x (+ (+ layer-offset-x 2) tile-x (/ tile-width 2)))

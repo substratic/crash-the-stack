@@ -35,31 +35,31 @@
         (modulo (+ selection delta)
                 (length menu-items))))
 
-    (define (menu-handler event state event-sink)
+    (define (menu-handler node context event event-sink)
       (define (execute-selection selection menu-items)
         (let ((executor (caddr (list-ref menu-items selection))))
           (if executor
-              (executor state event-sink)
-              state)))
+              (executor node event-sink)
+              node)))
 
-      (with-state state ((menu selection menu-items))
+      (with-state node ((menu selection menu-items))
         (case (event-type event)
           ((keyboard)
            (handle-key event
              (case-key
-               ("j"   (update-state state (menu (> (selection (move-selection +1 menu-items))))))
-               ("k"   (update-state state (menu (> (selection (move-selection -1 menu-items))))))
+               ("j"   (update-state node (menu (> (selection (move-selection +1 menu-items))))))
+               ("k"   (update-state node (menu (> (selection (move-selection -1 menu-items))))))
                ("RET" (execute-selection selection menu-items))
                ("SPC" (execute-selection selection menu-items))))))))
 
-    (define (menu-updater state time-step event-sink)
-      state)
+    (define (menu-updater node context time-step event-sink)
+      node)
 
-    (define (menu-renderer renderer state transform)
-      (with-state state ((menu selection menu-items))
+    (define (menu-renderer node context renderer)
+      (with-state node ((menu selection menu-items))
         (let ((index  0)
-              (screen-center-x (/ (transform-width transform) 2))
-              (start-y (/ (transform-height transform) 2)))
+              (screen-center-x (/ (state-ref context 'screen-width) 2))
+              (start-y (/ (state-ref context 'screen-height) 2)))
           (for-each (lambda (item)
                       (render-text renderer
                                    (cadr item)
