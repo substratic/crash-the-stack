@@ -25,6 +25,7 @@ jobs:
       with:
         update: true
         cache: true
+        path-type: inherit
         install: "autoconf git make mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-libwinpthread-git mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_image mingw-w64-x86_64-SDL2_ttf"
 
     - name: Download Gambit Scheme
