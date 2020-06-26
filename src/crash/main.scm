@@ -30,7 +30,7 @@
 
     (define (main #!key (start-repl #f)
                         (connect-emacs #f)
-                        (load-stack #f)
+                        (initial-mode #f)
                         (debug #f))
 
       (when start-repl
@@ -88,9 +88,13 @@
 
         ;; Start the game loop
         (game-loop renderer
-                   (if load-stack
-                       (game-mode stack-file: load-stack)
-                       (title-screen-mode))
+                   (cond
+                    ((equal? #f initial-mode)
+                     (title-screen-mode))
+                    ((equal? 'game (car initial-mode))
+                     (game-mode stack-file: (cdr initial-mode)))
+                    ((equal? 'edit (car initial-mode))
+                     (game-mode editor?: #t stack-file: (cdr initial-mode))))
                    screen-width screen-height
                    enable-rpc: connect-emacs
                    show-fps: debug)

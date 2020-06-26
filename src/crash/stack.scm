@@ -27,12 +27,14 @@
           (substratic engine logging)
           (substratic engine renderer)
           (substratic engine transform)
-          (substratic engine components))
+          (substratic engine components)
+          (substratic engine components messages))
   (export make-stack
           stack-component
           load-stack
           load-stack-file
           get-playable-tiles
+          tile-placeable?
           make-occlusion-map)
   (begin
 
@@ -48,93 +50,65 @@
 
     (define show-playable-tiles #f)
 
-    (define (playable-tile-at-point pos-x pos-y playable-tiles)
-      ;; NOTE: This is a naive approach but seemingly more expedient
-      ;; than a calculation-based lookup approach
-      (let next-playable ((tiles playable-tiles))
-        (if (null? tiles)
-            #f
-            (let ((screen-rect
-                    (tile-pos->screen-rect (car tiles) screen-width screen-height)))
-              (if (and (>= pos-x (car screen-rect))
-                       (<  pos-x (+ (car screen-rect)
-                                    (+ (caddr screen-rect) layer-offset-x)))
-                       (>= pos-y (cadr screen-rect))
-                       (<  pos-y (+ (cadr screen-rect) (cadddr screen-rect))))
-                  (begin
-                    ;; TODO: Convert this to a message event
-                    (println "\nSelected tile at pos:")
-                    (pp (car tiles))
-                    (car tiles))
-                  (next-playable (cdr tiles)))))))
-
-    (define (find find-proc items)
-      (let next-item ((items items))
-        (if (pair? items)
-            (if (find-proc (car items))
-                (car items)
-                (next-item (cdr items)))
-            #f)))
-
-    (define (tile-at-pos? tile-pos)
-      (lambda (tile)
-        (equal? (get-tile-pos tile) tile-pos)))
-
-    (define (tiles-match? selected-tile-pos match-tile-pos tiles)
-      (let ((selected-tile (find (tile-at-pos? selected-tile-pos) tiles))
-            (match-tile    (find (tile-at-pos? match-tile-pos) tiles)))
-        (equal? (state-ref selected-tile '(tile glyph))
-                (state-ref match-tile '(tile glyph)))))
-
-    (define (remove-match state selected-tile-pos match-tile-pos)
-      (with-state state ((stack tiles playable occlusion-map))
-        ;; Remove tiles from tiles
-        (set! tiles (remp (tile-at-pos? selected-tile-pos) tiles))
-        (set! tiles (remp (tile-at-pos? match-tile-pos) tiles))
-
-        ;; Clear spots in occlusion-map
-        (set! occlusion-map (hamt-set occlusion-map (log-value "Removing selected:" selected-tile-pos) #f))
-        (set! occlusion-map (hamt-set occlusion-map (log-value "Removing matched:" match-tile-pos) #f))
-
-        ;; Recalculate playable tiles
-        (set! playable (get-playable-tiles tiles occlusion-map))
-
-        (update-state state (stack (> (tiles tiles)
-                                      (playable playable)
-                                      (match-pairs (get-match-pairs playable tiles))
-                                      (selected-tile #f)
-                                      (occlusion-map occlusion-map))))))
-
-
     (define (stack-handler node context event event-sink)
-      (case (event-type event)
-       ((stack/select-tile)
-        (println "Selecting tile at: " (event-data event 'tile-x) " " (event-data event 'tile-y)))
+      (or (case (event-type event)
+           ((stack/shuffle)
+            (init-stack (state-ref node '(stack tiles)) node))
 
-       ((stack/shuffle)
-        (init-stack (state-ref state '(stack tiles)) state))
+           ((stack/store-initial)
+            (update-state node (stack
+                                (> (initial-stack (get-stack-data node))))))
 
-       ((stack/reset)
-        (load-stack (state-ref state '(stack initial-stack))))
+           ((stack/reset)
+            (load-stack (state-ref node '(stack initial-stack)) node))
 
-       ((stack/select-at)
-        (when screen-width
-          (with-state node ((stack layer-count playable tiles
-                                   selected-tile occlusion-map))
-            (let ((new-selected-tile (playable-tile-at-point
-                                       (event-data event 'pos-x)
-                                       (event-data event 'pos-y)
-                                       (state-ref node '(stack playable)))))
-              (when new-selected-tile
-                (if (and selected-tile
-                        (not (equal? selected-tile new-selected-tile))
-                        (tiles-match? selected-tile new-selected-tile tiles))
-                    (let ((new-node (remove-match node selected-tile new-selected-tile)))
-                      (event-sink
-                        (make-event 'stack/changed
-                                    data: `((stack ,@new-node))))
-                      new-node)
-                    (update-state node (stack (> (selected-tile new-selected-tile))))))))))))
+           (else #f))
+
+          (if (state-ref node '(game paused))
+              (case (event-type event)
+                ((stack/toggle-layer-visibility)
+                 (print-message event-sink "TODO: LAYER VISIBILITY"))
+
+                ((stack/insert-or-remove-tile)
+                 (insert-or-remove-tile node (event-data event 'tile-pos)))
+
+                ((stack/save)
+                 (let ((stack-file (event-data event 'stack-file)))
+                   (print-message event-sink "Saving stack to file: " stack-file)
+                   (save-stack node stack-file)))
+
+                (else #f))
+
+              (case (event-type event)
+               ((stack/select-tile)
+                (print-message event-sink "Selecting tile at: " (event-data event 'tile-x) " " (event-data event 'tile-y)))
+
+               ((stack/shuffle)
+                (init-stack (state-ref node '(stack tiles)) node))
+
+               ((stack/select-at)
+                (with-state node ((stack layer-count playable tiles
+                                         selected-tile occlusion-map))
+                  (let ((new-selected-tile (playable-tile-at-point
+                                             (event-data event 'pos-x)
+                                             (event-data event 'pos-y)
+                                             (state-ref node '(stack playable)))))
+                    (when new-selected-tile
+                      (print-message event-sink "Selected tile at pos:" new-selected-tile)
+                      (if (and selected-tile
+                               (not (equal? selected-tile new-selected-tile))
+                               (tiles-match? selected-tile new-selected-tile tiles))
+                          (let ((new-node (remove-match node selected-tile new-selected-tile)))
+                            (event-sink
+                              (make-event 'stack/changed
+                                           data: `((stack ,@new-node))))
+                            new-node)
+                          (update-state node (stack (> (selected-tile new-selected-tile)))))))))
+
+               (else #f)))
+
+          ;; If we reached this case, no events were handled
+          #!void))
 
     (define (screen-pos->tile-pos screen-x screen-y screen-width screen-height layer-index)
       (let* ((board-x (- screen-x board-start-x (* (+ layer-index 1) layer-offset-x)))
@@ -154,10 +128,11 @@
         (set! board-start-y (/ (- screen-height (* board-height tile-height)) 2)))
 
       (with-state node ((stack tiles playable selected-tile
-                               occlusion-map select-region))
-        (for-each (lambda (tile)
-                    (render-node tile context renderer))
-                  tiles)
+                               occlusion-map select-region show-glyphs?))
+        (let ((context (update-state context (show-glyphs? (not (state-ref node '(game paused)))))))
+          (for-each (lambda (tile)
+                      (render-node tile context renderer))
+                    tiles))
 
         (when show-playable-tiles
           Draw rects for the playable tiles
@@ -187,6 +162,8 @@
         ;; TODO: Draw reticules on the top and side to line up with selection for layer
         ;; Make it look vaguely techy!
         ;; Highlight tiles to show possible selections rather than drawing an ugly rectangle
+
+    ;; -- Stack initialization -------------------------------------------------
 
     ;; Randomize the random source for "real" randomness
     (random-source-randomize! default-random-source)
@@ -270,7 +247,7 @@
         ;; verbatim to look up occluding tiles, the sign will cause
         ;; positions arrived at by addition to not match what was stored
         ;; in the hash map.
-        (if (equal? num -0.) 0. num)))
+        (if (equal? new-num -0.) 0. new-num)))
 
     (define (make-occlusion-map tiles)
       (fold (lambda (tile occlusion-map)
@@ -288,12 +265,15 @@
 
         (update-state state
           (stack (> (tiles tiles)
+                    (tile-count (length tiles))
                     (playable    playable)
                     (match-pairs (get-match-pairs playable tiles))
                     (occlusion-map occlusion-map))))))
 
+    ;; -- Stack loading --------------------------------------------------------
+
     (define (load-stack-file stack-file state)
-      (let* ((stack-data (read (open-file (assets-path stack-file)))))
+      (let* ((stack-data (read (open-file stack-file))))
         (when (not (equal? (car stack-data) 'stack))
           (raise (string-append "load-stack: Cannot load data of type " (car area))))
         (load-stack (cdr stack-data) state)))
@@ -310,7 +290,6 @@
                       layer))
               stack-data))
 
-    ;; TODO: Separate load-stack (load-tiles) and init-stack
     (define (load-stack stack-data state)
       (let* ((layers (stack-data->layers stack-data))
              (tiles (let next-layer ((layers layers)
@@ -332,6 +311,166 @@
            (update-state (init-stack tiles state)
              (stack (> (initial-stack layers))))))
 
+    (define (tile-sorter new-tile old-tile)
+      ;; The question this function answers is "which tile gets rendered first?"
+      ;; Earlier tiles in the list are rendered first.
+      ;; - Tiles in lower layers are rendered before higher layers
+      ;; - Tiles on the same layer are rendered top to bottom, right to left
+      ;; 1000 is an arbitrary constant used to ensure higher layers are
+      ;; always sorted after lower layers.
+      (< (with-state new-tile ((position pos-x pos-y) (tile layer))
+           (+ (* layer 1000) (* pos-x -1.0) pos-y))
+         (with-state old-tile ((position pos-x pos-y) (tile layer))
+           (+ (* layer 1000) (* pos-x -1.0) pos-y))))
+
+    ;; -- Stack operations -----------------------------------------------------
+
+    (define (find find-proc items)
+      (let next-item ((items items))
+        (if (pair? items)
+            (if (find-proc (car items))
+                (car items)
+                (next-item (cdr items)))
+            #f)))
+
+    (define (tile-at-pos? tile-pos)
+      (lambda (tile)
+        (equal? (get-tile-pos tile) tile-pos)))
+
+    (define (tiles-match? selected-tile-pos match-tile-pos tiles)
+      (let ((selected-tile (find (tile-at-pos? selected-tile-pos) tiles))
+            (match-tile    (find (tile-at-pos? match-tile-pos) tiles)))
+        (equal? (state-ref selected-tile '(tile glyph))
+                (state-ref match-tile '(tile glyph)))))
+
+    (define (remove-match state selected-tile-pos match-tile-pos)
+      (with-state state ((stack tiles playable occlusion-map))
+        ;; Remove tiles from tiles
+        (set! tiles (remp (tile-at-pos? selected-tile-pos) tiles))
+        (set! tiles (remp (tile-at-pos? match-tile-pos) tiles))
+
+        ;; Clear spots in occlusion-map
+        (set! occlusion-map (hamt-set occlusion-map selected-tile-pos #f))
+        (set! occlusion-map (hamt-set occlusion-map match-tile-pos #f))
+
+        ;; Recalculate playable tiles
+        (set! playable (get-playable-tiles tiles occlusion-map))
+
+        (update-state state (stack (> (tiles tiles)
+                                      (playable playable)
+                                      (match-pairs (get-match-pairs playable tiles))
+                                      (selected-tile #f)
+                                      (occlusion-map occlusion-map))))))
+
+
+    (define (playable-tile-at-point pos-x pos-y playable-tiles)
+      ;; NOTE: This is a naive approach but seemingly more expedient
+      ;; than a calculation-based lookup approach
+      (let next-playable ((tiles playable-tiles))
+        (if (null? tiles)
+            #f
+            (let ((screen-rect
+                    (tile-pos->screen-rect (car tiles) screen-width screen-height)))
+              (if (and (>= pos-x (car screen-rect))
+                       (<  pos-x (+ (car screen-rect)
+                                    (+ (caddr screen-rect) layer-offset-x)))
+                       (>= pos-y (cadr screen-rect))
+                       (<  pos-y (+ (cadr screen-rect) (cadddr screen-rect))))
+                  (begin
+                    (pp (car tiles))
+                    (car tiles))
+                  (next-playable (cdr tiles)))))))
+
+
+    ;; -- Stack saving ---------------------------------------------------------
+
+    (define (get-stack-data node)
+      (let next-tile ((tiles (state-ref node '(stack tiles)))
+                      (current-layer 0)
+                      (layer-tiles '())
+                      (layers '()))
+        (if (not (pair? tiles))
+            (append layers (list layer-tiles))
+            ;; Decide whether we're still working on the current layer
+            ;; or should switch to the next layer
+            (with-state (car tiles) ((tile layer)
+                                     (position pos-x pos-y))
+              (let* ((new-layer? (> layer current-layer))
+                     (current-layer (if new-layer? (+ current-layer 1) current-layer))
+                     (tile (cons pos-x pos-y))
+                     (layers (if new-layer?
+                                 (append layers (list layer-tiles))
+                                 layers))
+                     (layer-tiles (if new-layer?
+                                      (list tile)
+                                      (append layer-tiles (list tile)))))
+                (next-tile (cdr tiles)
+                           current-layer
+                           layer-tiles
+                           layers))))))
+
+    (define (save-stack node stack-file)
+      (with-output-to-file stack-file
+        (lambda ()
+          (pretty-print (cons 'stack (get-stack-data node))))))
+
+    ;; -- Utilities for stack editing ------------------------------------------
+
+    (define (insert-tile node tile-pos new-tile)
+      (update-state
+       node
+       (stack
+        (> (tiles (lambda (tiles)
+                    (insert-sorted new-tile tile-sorter tiles)))
+           (tile-count (lambda (tile-count)
+                         (+ tile-count 1)))
+           (occlusion-map (lambda (occlusion-map)
+                            (hamt-set occlusion-map tile-pos #t)))))))
+
+    (define (remove-tile node tile-pos)
+      (update-state
+       node
+       (stack
+        (> (tiles (lambda (tiles)
+                    (remp (tile-at-pos? tile-pos) tiles)))
+           (tile-count (lambda (tile-count)
+                         (- tile-count 1)))
+           (occlusion-map (lambda (occlusion-map)
+                            (hamt-set occlusion-map tile-pos #f)))))))
+
+    ;; This procedure is invoked by the editor to set or clear a tile
+    ;; at the given tile position.
+    (define (insert-or-remove-tile node tile-pos)
+      (let* ((layer (tile-pos-layer tile-pos))
+             (pos-x (tile-pos-x tile-pos))
+             (pos-y (tile-pos-y tile-pos))
+             (exists? (tile-exists? layer pos-x pos-y (state-ref node '(stack occlusion-map)))))
+        (if exists?
+            (remove-tile node tile-pos)
+            (insert-tile
+             node
+             tile-pos
+             (make-tile `((tile .     ((layer . ,layer)))
+                          (position . ((pos-x . ,pos-x)
+                                       (pos-y . ,pos-y)))))))))
+
+    ;; Determines whether a tile can be placed at the given tile-pos
+    (define (tile-placeable? node tile-pos)
+      ;; A tile is placeable when there isn't a tile at any of its corner positions
+      (let ((layer (tile-pos-layer tile-pos))
+            (pos-x (tile-pos-x tile-pos))
+            (pos-y (tile-pos-y tile-pos))
+            (occlusion-map (state-ref node '(stack occlusion-map))))
+        ;; Checking positions in clockwise order from top left
+        (not (or (tile-exists? layer (- pos-x 0.5) (- pos-y 0.5) occlusion-map)
+                 (tile-exists? layer pos-x         (- pos-y 0.5) occlusion-map)
+                 (tile-exists? layer (+ pos-x 0.5) (- pos-y 0.5) occlusion-map)
+                 (tile-exists? layer (+ pos-x 0.5) pos-y         occlusion-map)
+                 (tile-exists? layer (+ pos-x 0.5) (+ pos-y 0.5) occlusion-map)
+                 (tile-exists? layer pos-x         (+ pos-y 0.5) occlusion-map)
+                 (tile-exists? layer (- pos-x 0.5) (+ pos-y 0.5) occlusion-map)
+                 (tile-exists? layer (- pos-x 0.5) pos-y         occlusion-map)))))
+
     (define (tile-run start-x pos-y num-tiles)
       (let next-tile ((tiles '())
                       (pos-x (+ start-x (- num-tiles 1)))
@@ -343,13 +482,17 @@
               (- pos-x 1)
               (+ count 1)))))
 
+    ;; -- Component definition -------------------------------------------------
+
     (define (stack-component)
       (make-component stack
         (tiles         '())
         (playable      '())
         (match-pairs   '())
         (selected-tile #f)
+        (tile-count    0)
         (initial-stack '())
+        (visibility    #f)  ;; Cons of first layer and opacity
         (occlusion-map (make-hamt))
         (handlers      (add-method `(stack ,@stack-handler)))
         (renderers     (add-method `(stack ,@stack-renderer)))))))

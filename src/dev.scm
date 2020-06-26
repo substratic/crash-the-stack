@@ -30,8 +30,20 @@
 (if (member "--repl" (command-line))
     (##repl))
 
+;; Look for --editor command
+(define initial-mode
+  (let loop ((args (cdr (command-line))))
+    (if (pair? args)
+        (cond
+          ((equal? "--editor" (car args))
+           `(edit . ,(cadr args)))
+          ((equal? "--stack" (car args))
+           `(game . ,(cadr args)))
+          (else (loop (cdr args))))
+        #f)))
+
 ;; Start it up!
 (main start-repl: #t
       connect-emacs: #t
-      load-stack: "stacks/test/small.scm"
+      initial-mode: initial-mode
       debug: #t)

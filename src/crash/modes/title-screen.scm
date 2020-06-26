@@ -96,7 +96,7 @@
 
     (define (setup-game-mode)
       ;; TODO: Support continuing from saved game
-      (game-mode stack-file: "stacks/test/gnome-easy.scm"))
+      (game-mode stack-file: (assets-path "stacks/test/gnome-easy.scm")))
 
     (define (start-game)
       (lambda (state event-sink)

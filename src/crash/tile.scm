@@ -31,6 +31,9 @@
           layer-offset-x
           layer-offset-y
           load-tile-assets
+          tile-pos-x
+          tile-pos-y
+          tile-pos-layer
           tile-pos->screen-rect)
   (begin
 
@@ -44,10 +47,19 @@
     (define (load-tile-assets)
       (set! tile-image (load-asset "images/tile.png")))
 
+    (define (tile-pos-layer tile-pos)
+      (car tile-pos))
+
+    (define (tile-pos-x tile-pos)
+      (cadr tile-pos))
+
+    (define (tile-pos-y tile-pos)
+      (caddr tile-pos))
+
     (define (tile-pos->screen-rect tile-pos screen-width screen-height)
-      (let* ((layer-index (car tile-pos))
-             (tile-x (cadr tile-pos))
-             (tile-y (caddr tile-pos))
+      (let* ((layer-index (tile-pos-layer tile-pos))
+             (tile-x (tile-pos-x tile-pos))
+             (tile-y (tile-pos-y tile-pos))
              (screen-x (+ (- (* tile-x tile-width)  (/ tile-width 2))
                           (/ screen-width 2)
                           (* layer-offset-x layer-index)))
@@ -81,14 +93,15 @@
             (set! glyph-color (make-color 52 158 255)))
 
           ;; Glyph text
-          (render-text
-            renderer
-            glyph
-            *default-font*
-            glyph-x
-            glyph-y
-            align: 'center
-            color: glyph-color))))
+          (when (state-ref context 'show-glyphs?)
+            (render-text
+              renderer
+              glyph
+              *default-font*
+              glyph-x
+              glyph-y
+              align: 'center
+              color: glyph-color)))))
 
     (define (tile-component)
       (make-component tile

@@ -19,6 +19,7 @@
 (define-library (crash modes game)
   (import (gambit)
           (crash stack)
+          (crash components editor)
           (crash controllers mouse)
           (substratic sdl2)
           (substratic engine node)
@@ -29,7 +30,8 @@
           (substratic engine keyboard)
           (substratic engine renderer)
           (substratic engine transform)
-          (substratic engine components))
+          (substratic engine components)
+          (substratic engine components messages))
   (export game-mode)
   (begin
 
@@ -42,43 +44,52 @@
          (update-state node (game (> (paused #f)))))
 
         ((keyboard)
-         (handle-key event
-           (case-key
-             ("C-r"
-               (println "Shuffling tiles")
-               (event-sink (make-event 'stack/shuffle)))
-             ("C-M-r"
-               (println "Resetting board")
-               (event-sink (make-event 'stack/reset))))))
+         (unless (state-ref node '(game paused))
+           (handle-key event
+             (case-key
+               ("C-r"
+                 (print-message event-sink "Shuffling tiles")
+                 (event-sink (make-event 'stack/shuffle)))
+               ("C-t"
+                 (print-message event-sink "RELOADING")
+                 (reload-module "" 'crash/stack))
+               ("C-M-r"
+                 (print-message event-sink "Resetting board")
+                 (event-sink (make-event 'stack/reset)))))))
 
         ((stack/changed)
-         (println "\nStack changed!")
          (with-state (event-data event 'stack) ((stack playable match-pairs tiles occlusion-map))
-           (println "Pairs remaining: " (length match-pairs))
+           (print-message event-sink "Pairs remaining: " (length match-pairs))
            ;; (pp match-pairs)
 
            ;; TODO: Check if playable is an odd number
            (if (equal? (length match-pairs) 0)
                (if (equal? (length tiles) 0)
-                   (println "All tiles removed!")
-                   (println "No more pairs!")))))))
+                   (print-message event-sink "All tiles removed!")
+                   (print-message event-sink "No more pairs!")))))))
 
     (define (game-renderer node context renderer)
       (render-clear renderer 43 4 82))
 
-    (define (game-component)
+    (define (game-component #!key (paused #f))
       (make-component game
-        (paused     #f)
+        (paused     paused)
         (state      'playing)
         (handlers   (add-method `((quit ,@quit-event-handler)
                                   (game ,@game-handler))))
         (renderers  (add-method `((game ,@game-renderer))))))
 
-    (define (game-mode #!key (stack-file #f))
+    (define (load-or-create-stack stack-file create-if-missing state)
+      (if (file-exists? stack-file)
+          (load-stack-file stack-file state)
+          state))
+
+    (define (game-mode #!key (stack-file #f) (editor? #f))
       (-> (make-node
             'game
-            (game-component)
+            (game-component paused: editor?)
             (mouse-controller-component)  ;; Lose the rat, chief
             (stack-component)
-            (messages-component))
-          (load-stack-file stack-file)))))
+            (messages-component)
+            (when editor? (editor-component stack-file: stack-file)))
+          (load-or-create-stack stack-file editor?)))))

@@ -42,6 +42,7 @@
 
     modules: '(;; Components
                "crash/components/menu"
+               "crash/components/editor"
 
                ;; Controllers
                "crash/controllers/wsad"
