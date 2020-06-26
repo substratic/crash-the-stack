@@ -153,7 +153,7 @@
             ;; TODO: Animate selection color
             (render-rect
               renderer
-              (list (+ (car tile-rect)    layer-offset-x 3)
+              (list (+ (car tile-rect)    2)
                     (+ (cadr tile-rect)   3)
                     (- (caddr tile-rect)  5)
                     (- (cadddr tile-rect) 5))

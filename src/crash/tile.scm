@@ -41,7 +41,7 @@
     (define tile-height 36)
     (define tile-image #f)
 
-    (define layer-offset-x 2)
+    (define layer-offset-x 3)
     (define layer-offset-y -3)
 
     (define (load-tile-assets)
@@ -78,9 +78,9 @@
         (let* ((tile-rect (tile-pos->screen-rect (list layer pos-x pos-y)
                                                  (state-ref context 'screen-width)
                                                  (state-ref context 'screen-height)))
-               (tile-x (car  tile-rect))
+               (tile-x (- (car tile-rect) layer-offset-x))
                (tile-y (cadr tile-rect))
-               (glyph-x (+ (+ layer-offset-x 2) tile-x (/ tile-width 2)))
+               (glyph-x (+ tile-x (/ tile-width 2) 4))
                (glyph-y (+ tile-y (/ tile-height 2) 3))) ;; TODO: No magic constants
 
           ;; Draw the tile
