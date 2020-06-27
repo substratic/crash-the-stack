@@ -30,7 +30,8 @@
           (substratic engine keyboard)
           (substratic engine renderer)
           (substratic engine transform)
-          (substratic engine components))
+          (substratic engine components)
+          (substratic engine components messages))
   (export editor-component)
 
   (begin
@@ -74,14 +75,14 @@
          (if (state-ref node '(editor can-place?))
              (event-sink (make-event 'stack/insert-or-remove-tile
                                      data: `((tile-pos . ,(state-ref node '(editor cursor-pos))))))
-             (println "Can't place here!")))
+             (print-message event-sink "Can't place here!")))
 
         ;; Editor Modes
         ("C-p"
           (let ((tile-count (state-ref node '(stack tile-count))))
             (if (and (> tile-count 0)
                      (> (modulo tile-count 2) 0))
-                (println "Can't play a stack with odd tile count")
+                (print-message event-sink "Can't play a stack with odd tile count")
                 (begin
                   (event-sink (make-event 'stack/store-initial))
                   (event-sink (make-event 'stack/shuffle))
@@ -106,10 +107,10 @@
           (let ((tile-count (state-ref node '(stack tile-count))))
             (if (> tile-count 0)
                 (if (> (modulo tile-count 2) 0)
-                    (println "Can't save stack with odd number of tiles!")
+                    (print-message event-sink "Can't save stack with odd number of tiles!")
                     (event-sink (make-event 'stack/save
                                             data: `((stack-file . ,(state-ref node '(editor stack-file)))))))
-                (println "No tiles to save!")))))))
+                (print-message event-sink "No tiles to save!")))))))
 
     (define (editor-handler node context event event-sink)
       (case (event-type event)
