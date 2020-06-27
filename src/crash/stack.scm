@@ -66,9 +66,6 @@
 
           (if (state-ref node '(game paused))
               (case (event-type event)
-                ((stack/toggle-layer-visibility)
-                 (print-message event-sink "TODO: LAYER VISIBILITY"))
-
                 ((stack/insert-or-remove-tile)
                  (insert-or-remove-tile node (event-data event 'tile-pos)))
 
@@ -127,15 +124,16 @@
         (set! board-start-x (/ (- screen-width  (* board-width  tile-width)) 2))
         (set! board-start-y (/ (- screen-height (* board-height tile-height)) 2)))
 
-      (with-state node ((stack tiles playable selected-tile
+      (with-state node ((stack tiles playable selected-tile layer-opacity
                                occlusion-map select-region show-glyphs?))
-        (let ((context (update-state context (show-glyphs? (not (state-ref node '(game paused)))))))
+        (let ((context (update-state context (show-glyphs? (not (state-ref node '(game paused))))
+                                             (layer-opacity layer-opacity))))
           (for-each (lambda (tile)
                       (render-node tile context renderer))
                     tiles))
 
         (when show-playable-tiles
-          Draw rects for the playable tiles
+          ;; Draw rects for the playable tiles
           (for-each (lambda (playable-tile)
                       (let ((tile-rect (tile-pos->screen-rect playable-tile
                                                               screen-width
@@ -492,7 +490,7 @@
         (selected-tile #f)
         (tile-count    0)
         (initial-stack '())
-        (visibility    #f)  ;; Cons of first layer and opacity
+        (layer-opacity #f)  ;; Cons of first layer and opacity
         (occlusion-map (make-hamt))
         (handlers      (add-method `(stack ,@stack-handler)))
         (renderers     (add-method `(stack ,@stack-renderer)))))))

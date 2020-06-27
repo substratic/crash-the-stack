@@ -81,13 +81,19 @@
                (tile-x (- (car tile-rect) layer-offset-x))
                (tile-y (cadr tile-rect))
                (glyph-x (+ tile-x (/ tile-width 2) 4))
-               (glyph-y (+ tile-y (/ tile-height 2) 3))) ;; TODO: No magic constants
+               (glyph-y (+ tile-y (/ tile-height 2) 3)) ;; TODO: No magic constants
+               (layer-opacity (state-ref context 'layer-opacity))
+               (alpha (if (and layer-opacity
+                               (>= layer (car layer-opacity)))
+                          (cdr layer-opacity)
+                          255)))
 
           ;; Draw the tile
           (render-image renderer
                         tile-image
                         tile-x
-                        tile-y)
+                        tile-y
+                        alpha: alpha)
 
           (when (not glyph-color)
             (set! glyph-color (make-color 52 158 255)))
@@ -101,7 +107,8 @@
               glyph-x
               glyph-y
               align: 'center
-              color: glyph-color)))))
+              color: glyph-color
+              alpha: alpha)))))
 
     (define (tile-component)
       (make-component tile

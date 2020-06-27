@@ -35,11 +35,20 @@
 
   (begin
 
+    (define (update-layer-opacity node layer)
+      (let* ((layer-opacity (state-ref node '(editor layer-opacity)))
+             (layer-opacity (if layer-opacity
+                                (cons (+ layer 1) (cdr layer-opacity))
+                                #f)))
+        (update-state node (editor (> (layer-opacity layer-opacity)))
+                           (stack (> (layer-opacity layer-opacity))))))
+
     (define (move-cursor node delta-x delta-y delta-z)
       (let* ((cursor-pos (state-ref node '(editor cursor-pos)))
-             (new-pos (list (+ delta-z (list-ref cursor-pos 0))
+             (new-pos (list (max 0 (+ delta-z (list-ref cursor-pos 0)))
                             (+ delta-x (list-ref cursor-pos 1))
                             (+ delta-y (list-ref cursor-pos 2)))))
+        (set! node (update-layer-opacity node (tile-pos-layer new-pos)))
         (update-state node (editor (> (cursor-pos new-pos)
                                       (can-place? (tile-placeable? node new-pos)))))))
 
@@ -77,11 +86,20 @@
                   (event-sink (make-event 'stack/store-initial))
                   (event-sink (make-event 'stack/shuffle))
                   (event-sink (make-event 'game/unpause))
-                  (update-state node (editor (> (mode 'playback))))))))
+                  (update-state node (editor (> (mode 'playback)))
+                                     (stack  (> (layer-opacity #f))))))))
 
         ;; Layer Visibility
         ("TAB"
-         (event-sink (make-event 'stack/toggle-layer-visibility)))
+         (let* ((layer-opacity (state-ref node '(editor layer-opacity)))
+                (layer-opacity (if layer-opacity
+                                   (if (equal? (cdr layer-opacity) 70)
+                                       (cons (car layer-opacity) 0)
+                                       #f)
+                                   (cons (+ (tile-pos-layer (state-ref node '(editor cursor-pos))) 1)
+                                         70))))
+           (update-state node (editor (> (layer-opacity layer-opacity)))
+                              (stack  (> (layer-opacity layer-opacity))))))
 
         ;; File Operations
         ("C-s"
@@ -105,7 +123,8 @@
                ("C-p"
                  (event-sink (make-event 'stack/reset))
                  (event-sink (make-event 'game/pause))
-                 (update-state node (editor (> (mode 'editor)))))))))))
+                 (update-state node (editor (> (mode 'editor)))
+                                    (stack  (> (layer-opacity (state-ref node '(editor layer-opacity)))))))))))))
 
     (define (editor-updater node context time-step event-sink)
       (if (state-ref node '(editor panel))
@@ -169,11 +188,12 @@
     (define (editor-component #!key (stack-file #f))
       (make-component
        editor
-       (visible    #t)
-       (mode       'editor) ;; Or 'playback
-       (cursor-pos '(0 0. 0.))
-       (can-place? #t)
-       (stack-file stack-file)
-       (updaters   (add-method `(editor ,@editor-updater)))
-       (handlers   (add-method `(editor ,@editor-handler)))
-       (renderers  (add-method `(editor . crash/components/editor#editor-renderer)))))))
+       (visible       #t)
+       (mode          'editor) ;; Or 'playback
+       (cursor-pos    '(0 0. 0.))
+       (can-place?    #t)
+       (stack-file    stack-file)
+       (layer-opacity #f)
+       (updaters      (add-method `(editor ,@editor-updater)))
+       (handlers      (add-method `(editor ,@editor-handler)))
+       (renderers     (add-method `(editor . crash/components/editor#editor-renderer)))))))
