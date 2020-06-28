@@ -20,13 +20,16 @@
   (import (gambit)
           (crash tile)
           (crash modes game)
-          (crash modes title-screen)
           (substratic sdl2)
           (substratic engine loop)
           (substratic engine assets)
           (substratic engine config))
   (export main)
   (begin
+
+    (define (make-title-screen-mode)
+      (import (crash modes title-screen))
+      (title-screen-mode make-game-mode: game-mode))
 
     (define (main #!key (start-repl #f)
                         (connect-emacs #f)
@@ -90,7 +93,7 @@
         (game-loop renderer
                    (cond
                     ((equal? #f initial-mode)
-                     (title-screen-mode))
+                     (make-title-screen-mode))
                     ((equal? 'game (car initial-mode))
                      (game-mode stack-file: (cdr initial-mode)))
                     ((equal? 'edit (car initial-mode))

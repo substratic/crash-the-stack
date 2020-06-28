@@ -18,10 +18,8 @@
 
 (define-library (crash modes title-screen)
   (import (gambit)
-          (crash modes game)
           (crash components menu)
           (crash controllers mouse)
-          (substratic sdl2)
           (substratic engine node)
           (substratic engine state)
           (substratic engine assets)
@@ -30,6 +28,7 @@
           (substratic engine macros)
           (substratic engine keyboard)
           (substratic engine renderer)
+          (substratic engine components fade)
           (substratic engine components component))
   (export title-screen-mode)
   (begin
@@ -92,20 +91,19 @@
                     (- (state-ref context 'screen-height) 25)
                     font: *default-font-small*))
 
-    (define (setup-game-mode)
+    (define (setup-game-mode node)
       ;; TODO: Support continuing from saved game
-      (game-mode stack-file: (assets-path "stacks/test/gnome-easy.scm")))
+      ((state-ref node 'make-game-mode) stack-file: (assets-path "stacks/test/gnome-easy.scm")))
 
-    (define (start-game)
-      (lambda (state event-sink)
+    (define (start-game state event-sink)
         (event-sink (make-event
                       'engine/change-mode
-                      data: `((next-mode ,@setup-game-mode))))))
+                      data: `((next-mode ,@(lambda () (setup-game-mode state)))))))
 
     (define main-menu-items
-      `((new      "New Game" ,(start-game))
+      `((new      "New Game" ,start-game)
 
-        (continue "Continue" ,(start-game))
+        (continue "Continue" ,start-game)
         (options  "Options"  #f)
         (credits  "Credits"  #f)
         (exit     "Exit"     ,(lambda (state event-sink)
@@ -152,6 +150,8 @@
              (renderers (add-method `(title-screen ,@title-screen-renderer)))))
           ((menu-component items: main-menu-items))))
 
-    (define (title-screen-mode)
-      (-> (make-node 'title-screen)
+    (define (title-screen-mode #!key make-game-mode)
+      (-> (make-node 'title-screen
+            (lambda (node params)
+              (update-state node (make-game-mode (lambda (v) make-game-mode)))))
           (publisher-card-phase)))))
