@@ -24,10 +24,8 @@
           (substratic engine state)
           (substratic engine assets)
           (substratic engine events)
-          (substratic engine logging)
           (substratic engine renderer)
-          (substratic engine transform)
-          (substratic engine components)
+          (substratic engine components component)
           (substratic engine components messages))
   (export make-stack
           stack-component

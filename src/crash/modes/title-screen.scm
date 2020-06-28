@@ -28,11 +28,9 @@
           (substratic engine easing)
           (substratic engine events)
           (substratic engine macros)
-          (substratic engine logging)
           (substratic engine keyboard)
           (substratic engine renderer)
-          (substratic engine transform)
-          (substratic engine components))
+          (substratic engine components component))
   (export title-screen-mode)
   (begin
 

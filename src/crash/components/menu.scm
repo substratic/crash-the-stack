@@ -18,15 +18,13 @@
 
 (define-library (crash components menu)
   (import (gambit)
-          (substratic sdl2)
           (substratic engine node)
           (substratic engine state)
           (substratic engine assets)
           (substratic engine events)
           (substratic engine keyboard)
           (substratic engine renderer)
-          (substratic engine transform)
-          (substratic engine components))
+          (substratic engine components component))
   (export menu-component)
   (begin
 

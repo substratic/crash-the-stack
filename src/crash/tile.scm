@@ -18,13 +18,12 @@
 
 (define-library (crash tile)
   (import (gambit)
-          (substratic sdl2)
           (substratic engine node)
           (substratic engine state)
           (substratic engine assets)
           (substratic engine renderer)
-          (substratic engine transform)
-          (substratic engine components))
+          (substratic engine components position)
+          (substratic engine components component))
   (export make-tile
           tile-width
           tile-height

@@ -18,12 +18,9 @@
 
 (define-library (crash controllers mouse)
   (import (gambit)
-          (substratic sdl2)
           (substratic engine state)
           (substratic engine events)
-          (substratic engine keyboard)
-          (substratic engine renderer)
-          (substratic engine components))
+          (substratic engine components component))
   (export mouse-controller-component)
   (begin
 

@@ -18,12 +18,10 @@
 
 (define-library (crash controllers hack)
   (import (gambit)
-          (substratic sdl2) ;; TODO: This shouldn't be needed for case-key!
           (substratic engine state)
           (substratic engine events)
           (substratic engine keyboard)
-          (substratic engine renderer)
-          (substratic engine components))
+          (substratic engine components component))
   (export hack-controller-component)
   (begin
 
