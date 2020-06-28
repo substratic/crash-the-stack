@@ -372,9 +372,7 @@
                                     (+ (caddr screen-rect) layer-offset-x)))
                        (>= pos-y (cadr screen-rect))
                        (<  pos-y (+ (cadr screen-rect) (cadddr screen-rect))))
-                  (begin
-                    (pp (car tiles))
-                    (car tiles))
+                  (car tiles)
                   (next-playable (cdr tiles)))))))
 
 
