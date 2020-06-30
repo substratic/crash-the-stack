@@ -45,10 +45,12 @@
           ((keyboard)
            (handle-key event
              (case-key
-               ("j"   (update-state node (menu (> (selection (move-selection +1 menu-items))))))
-               ("k"   (update-state node (menu (> (selection (move-selection -1 menu-items))))))
-               ("RET" (execute-selection selection menu-items))
-               ("SPC" (execute-selection selection menu-items))))))))
+               ("j"    (update-state node (menu (> (selection (move-selection +1 menu-items))))))
+               ("k"    (update-state node (menu (> (selection (move-selection -1 menu-items))))))
+               ("up"   (update-state node (menu (> (selection (move-selection -1 menu-items))))))
+               ("down" (update-state node (menu (> (selection (move-selection +1 menu-items))))))
+               ("RET"  (execute-selection selection menu-items))
+               ("SPC"  (execute-selection selection menu-items))))))))
 
     (define (menu-updater node context time-step event-sink)
       node)
