@@ -86,9 +86,6 @@
         ;; Preload assets needed everywhere
         (load-default-fonts)
 
-        ;; Load game assets
-        (load-tile-assets)
-
         ;; Start the game loop
         (game-loop renderer
                    (cond

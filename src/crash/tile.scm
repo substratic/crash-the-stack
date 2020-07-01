@@ -87,6 +87,9 @@
                           (cdr layer-opacity)
                           255)))
 
+          (unless tile-image
+            (load-tile-assets))
+
           ;; Draw the tile
           (render-image renderer
                         tile-image
