@@ -21,9 +21,11 @@
           (crash tile)
           (crash modes game)
           (substratic sdl2)
+          (substratic forge)
           (substratic engine loop)
           (substratic engine assets)
-          (substratic engine config))
+          (substratic engine config)
+          (substratic engine events))
   (export main)
   (begin
 
@@ -31,18 +33,9 @@
       (import (crash modes title-screen))
       (title-screen-mode make-game-mode: game-mode))
 
-    (define (main #!key (start-repl #f)
-                        (connect-emacs #f)
+    (define (main #!key (start-forge? #f)
                         (initial-mode #f)
                         (debug #f))
-
-      (when start-repl
-        ;; Start a REPL for interactive development
-        (##start-repl-server "localhost:44555")
-
-        ;; Invoke emacsclient to initiate the REPL connection
-        (when connect-emacs
-          (shell-command "emacsclient -e \"(connect-deft-repl)\"" #t)))
 
       ;; Initialize SDL
       (if (< (SDL_Init SDL_INIT_VIDEO) 0) (SDL_LogCritical (string-append "Error initializing SDL " (SDL_GetError))))
@@ -51,7 +44,8 @@
       (IMG_Init IMG_INIT_PNG)
       (TTF_Init)
 
-      (let* ((window-width 1280)
+      (let* ((event-sink (make-event-sink))
+             (window-width 1280)
              (window-height 720)
              (screen-width 640)  ; Make the logical screen size smaller to scale up
              (screen-height 360) ; game assets for a retro pixel look
@@ -79,6 +73,10 @@
         (if (not renderer)
             (println "Error creating renderer: " (SDL_GetError)))
 
+        (when start-forge?
+          ;; Start Substratic Forge for interactive development
+          (start-forge event-sink))
+
         ;; Set the global image loader to use the renderer instance
         (image-loader-set! (lambda (image-path)
                             (github.com/substratic/engine/assets#load-image renderer image-path)))
@@ -96,7 +94,6 @@
                     ((equal? 'edit (car initial-mode))
                      (game-mode editor?: #t stack-file: (cdr initial-mode))))
                    screen-width screen-height
-                   enable-rpc: connect-emacs
                    show-fps: debug)
 
         (SDL_DestroyWindow window)

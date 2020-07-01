@@ -43,7 +43,6 @@
         #f)))
 
 ;; Start it up!
-(main start-repl: #t
-      connect-emacs: #t
+(main start-forge?: #t
       initial-mode: initial-mode
       debug: #t)

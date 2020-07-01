@@ -17,4 +17,5 @@
 ;; along with Crash The Stack.  If not, see <https://www.gnu.org/licenses/>.
 
 (define-module-alias (substratic sdl2)   (github.com/substratic sdl2))
+(define-module-alias (substratic forge)  (github.com/substratic forge))
 (define-module-alias (substratic engine) (github.com/substratic engine))
